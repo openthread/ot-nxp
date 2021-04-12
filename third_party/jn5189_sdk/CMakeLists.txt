@@ -67,10 +67,45 @@ if (SDK_RELEASE)
         $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/TimersManager/Source/TMR_Adapter.c
     )
     else()
-    SET_SOURCE_FILES_PROPERTIES( $ENV{NXP_JN5189_SDK_ROOT}/path_from_repo/TODO.c PROPERTIES LANGUAGE CXX)
+
+    SET_SOURCE_FILES_PROPERTIES($ENV{NXP_JN5189_SDK_ROOT}/devices/JN5189/mcuxpresso/startup_jn5189.c PROPERTIES LANGUAGE CXX)
     
     add_library(nxp-jn5189-driver
-        $ENV{NXP_JN5189_SDK_ROOT}/path_from_repo/TODO.c
+        $ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/utility/board_utility.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/openthread/boards/dk6_jn5189/enablement/board.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/openthread/boards/dk6_jn5189/enablement/clock_config.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/openthread/boards/dk6_jn5189/enablement/pin_mux.c
+        $ENV{NXP_JN5189_SDK_ROOT}/components/serial_manager/serial_manager.c
+        $ENV{NXP_JN5189_SDK_ROOT}/components/serial_manager/serial_port_uart.c
+        $ENV{NXP_JN5189_SDK_ROOT}/components/uart/usart_adapter.c
+        $ENV{NXP_JN5189_SDK_ROOT}/devices/K32W061/drivers/fsl_clock.c
+        $ENV{NXP_JN5189_SDK_ROOT}/devices/K32W061/drivers/fsl_power.c
+        $ENV{NXP_JN5189_SDK_ROOT}/devices/K32W061/drivers/fsl_reset.c
+        $ENV{NXP_JN5189_SDK_ROOT}/devices/K32W061/drivers/fsl_wtimer.c
+        $ENV{NXP_JN5189_SDK_ROOT}/devices/JN5189/system_JN5189.c
+        $ENV{NXP_JN5189_SDK_ROOT}/devices/JN5189/mcuxpresso/startup_jn5189.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/Common/MicroInt_arm_sdk2.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/Flash/Internal/Flash_Adapter.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/FunctionLib/FunctionLib.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/Lists/GenericList.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/MemManager/Source/MemManager.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/Panic/Source/Panic.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/PDM/pdm_port.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/Reset/Reset.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SerialManager/Source/SerialManager.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SerialManager/Source/UART_Serial_Adapter.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/TimersManager/Source/TMR_Adapter.c
+        $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/aes/fsl_aes.c
+        $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/common/fsl_common.c
+        $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/ctimer/fsl_ctimer.c
+        $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/flexcomm/fsl_flexcomm.c
+        $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/flexcomm/fsl_usart.c
+        $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/lpc_gpio/fsl_gpio.c
+        $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/jn_flash/fsl_flash.c
+        $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/jn_rng/fsl_rng.c
+        $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/sha/fsl_sha.c
+        $ENV{NXP_JN5189_SDK_ROOT}/platform/utilities/debug_console/fsl_debug_console.c
+        $ENV{NXP_JN5189_SDK_ROOT}/platform/utilities/debug_console/str/fsl_str.c
     )
 endif()
 
@@ -109,8 +144,8 @@ if (SDK_RELEASE)
             $ENV{NXP_JN5189_SDK_ROOT}/CMSIS/Include  
             $ENV{NXP_JN5189_SDK_ROOT}/components/uart
             $ENV{NXP_JN5189_SDK_ROOT}/devices/JN5189
-            $ENV{NXP_JN5189_SDK_ROOT}/devices/JN5189/drivers 
-            $ENV{NXP_JN5189_SDK_ROOT}/devices/JN5189/utilities/str 
+            $ENV{NXP_JN5189_SDK_ROOT}/devices/K32W061/drivers 
+            $ENV{NXP_JN5189_SDK_ROOT}/devices/K32W061/utilities/str 
             $ENV{NXP_JN5189_SDK_ROOT}/middleware/mbedtls/port/ksdk       
             $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/ieee-802.15.4/uMac/Include
             $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/Common/
@@ -131,7 +166,29 @@ if (SDK_RELEASE)
     else()
     target_include_directories(nxp-jn5189-driver
         PUBLIC
-            $ENV{NXP_JN5189_SDK_ROOT}/path_from_repo/TODO.c
+            $ENV{NXP_JN5189_SDK_ROOT}/boards/jn5189dk6/wireless_examples/openthread/enablement
+            $ENV{NXP_JN5189_SDK_ROOT}/components/serial_manager
+            $ENV{NXP_JN5189_SDK_ROOT}/CMSIS/Include
+            $ENV{NXP_JN5189_SDK_ROOT}/components/uart
+            $ENV{NXP_JN5189_SDK_ROOT}/devices/JN5189
+            $ENV{NXP_JN5189_SDK_ROOT}/devices/JN5189/drivers
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/mbedtls/port/ksdk
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/ieee-802.15.4/uMac/Include
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/Common/
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/FunctionLib/
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/Flash/Internal
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/Lists
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/MemManager/Interface
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/OSAbstraction/Interface
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/Panic/Interface/
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/PDM/Include
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SerialManager/Interface
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SerialManager/Source
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/TimersManager/Interface
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/TimersManager/Source
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6/Build/Include
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6
+            $ENV{NXP_JN5189_SDK_ROOT}/platform/utilities/debug_console/str
     )
 endif()
 

@@ -82,7 +82,7 @@ INT_STORAGE_SIZE                               = INT_STORAGE_END - INT_STORAGE_S
 
 FREESCALE_PROD_DATA_BASE_ADDR                  = m_fsl_prodInfo_start;
 INT_STORAGE_SECTOR_SIZE                        = m_sector_size;
-m_app_size                                     = 0x7A120;
+m_app_size                                     = 0x96000;
 __ram_vector_table__                           = 1;
 vector_table_size                              = 0x120;
 M_VECTOR_RAM_SIZE                              = DEFINED(__ram_vector_table__) ? vector_table_size : 0x0;

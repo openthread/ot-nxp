@@ -51,7 +51,6 @@ list(APPEND OT_PUBLIC_INCLUDES
         "${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/repo/"
         "${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/repo/include/"
         "$ENV{NXP_K32W061_SDK_ROOT}"
-        "$ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/wireless_examples/openthread/enablement"
         "$ENV{NXP_K32W061_SDK_ROOT}/CMSIS/Include/"
         "$ENV{NXP_K32W061_SDK_ROOT}/components/serial_manager/"
         "$ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061"
@@ -73,6 +72,27 @@ list(APPEND OT_PUBLIC_INCLUDES
         "$ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6/Build/Include"
 )
 
+if (SDK_RELEASE)
+    list(APPEND OT_PUBLIC_INCLUDES
+        "$ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/wireless_examples/openthread/enablement"
+    )
+else()
+    list(APPEND OT_PUBLIC_INCLUDES
+        "$ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/openthread/boards/dk6_jn5189/enablement"
+        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/aes"
+        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/common"
+        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/ctimer"
+        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/flexcomm"
+        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/jn_flash"
+        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/jn_iocon"
+        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/jn_rng"
+        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/lpc_adc"
+        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/lpc_gpio"
+        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/sha"
+        "$ENV{NXP_K32W061_SDK_ROOT}/platform/utilities/debug_console"
+    )
+endif()
+
 set(K32W_COMM_SOURCES
     platform/alarm.c
     platform/diag.c
@@ -84,10 +104,19 @@ set(K32W_COMM_SOURCES
     platform/settings_k32w.c
     platform/system.c
     platform/uart.c
-    $ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/utilities/fsl_assert.c
     $ENV{NXP_K32W061_SDK_ROOT}/middleware/mbedtls/port/ksdk/aes_alt.c
     $ENV{NXP_K32W061_SDK_ROOT}/middleware/mbedtls/port/ksdk/ksdk_mbedtls.c
 )
+
+if (SDK_RELEASE)
+    list(APPEND K32W_COMM_SOURCES
+        $ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/utilities/fsl_assert.c
+    )
+else()
+    list(APPEND K32W_COMM_SOURCES
+        $ENV{NXP_K32W061_SDK_ROOT}/platform/utilities/assert/fsl_assert.c
+    )
+endif()
 
 set(K32W_LIBS
     $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/ieee-802.15.4/lib/libMiniMac.a
