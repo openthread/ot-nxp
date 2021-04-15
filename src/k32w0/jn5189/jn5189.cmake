@@ -39,7 +39,7 @@ target_compile_definitions(ot-config INTERFACE
 set(OT_PUBLIC_INCLUDES ${OT_PUBLIC_INCLUDES} PARENT_SCOPE)
 
 set(COMM_FLAGS
-    -I${PROJECT_SOURCE_DIR}/examples/platforms/k32w/jn5189/
+    -I${PROJECT_SOURCE_DIR}/examples/platforms/k32w0/jn5189/
 )
 if(OT_CFLAGS MATCHES "-pedantic-errors")
     string(REPLACE "-pedantic-errors" "" OT_CFLAGS "${OT_CFLAGS}")
@@ -50,7 +50,7 @@ if(OT_CFLAGS MATCHES "-Wcast-align")
 endif()
 
 add_library(openthread-jn5189
-    ${K32W_COMM_SOURCES}
+    ${K32W0_COMM_SOURCES}
     $<TARGET_OBJECTS:openthread-platform-utils>
 )
 
@@ -63,8 +63,8 @@ set_target_properties(openthread-jn5189
 target_link_libraries(openthread-jn5189
     PUBLIC
         ${OT_MBEDTLS}                         
-        ${K32W_LIBS}
-        -T${PROJECT_SOURCE_DIR}/src/k32w/jn5189/jn5189.ld
+        ${K32W0_LIBS}
+        -T${PROJECT_SOURCE_DIR}/src/k32w0/jn5189/jn5189.ld
         -Wl,--gc-sections
         -Wl,-Map=$<TARGET_PROPERTY:NAME>.map
     PRIVATE
@@ -86,7 +86,7 @@ target_compile_options(openthread-jn5189
 target_include_directories(openthread-jn5189
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/jn5189
-        ${K32W_INCLUDES}
+        ${K32W0_INCLUDES}
         ${OT_PUBLIC_INCLUDES}
 )
 

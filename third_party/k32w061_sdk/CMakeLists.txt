@@ -129,44 +129,45 @@ target_compile_options(nxp-k32w061-driver
         -Wno-sign-compare
         -Wno-unused-function
         -Wno-unused-parameter
-        -Wno-empty-body                                                                                                   
-        -Wno-missing-field-initializers                                                                                    
-        -Wno-clobbered                                                                                                     
+        -Wno-empty-body
+        -Wno-missing-field-initializers
+        -Wno-clobbered
         -fno-strict-aliasing
-        -imacros "${PROJECT_SOURCE_DIR}/src/k32w/k32w061/k32w061-sdk-config.h"
+        -imacros "${PROJECT_SOURCE_DIR}/src/k32w0/k32w061/k32w061-sdk-config.h"
 )
 
 if (SDK_RELEASE)
     target_include_directories(nxp-k32w061-driver
         PUBLIC
             $ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/wireless_examples/openthread/enablement
-            $ENV{NXP_K32W061_SDK_ROOT}/components/serial_manager  
-            $ENV{NXP_K32W061_SDK_ROOT}/CMSIS/Include  
+            $ENV{NXP_K32W061_SDK_ROOT}/components/serial_manager
+            $ENV{NXP_K32W061_SDK_ROOT}/CMSIS/Include
             $ENV{NXP_K32W061_SDK_ROOT}/components/uart
             $ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061
-            $ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/drivers 
-            $ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/utilities/str 
-            $ENV{NXP_K32W061_SDK_ROOT}/middleware/mbedtls/port/ksdk       
+            $ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/drivers
+            $ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/utilities/str
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/mbedtls/port/ksdk
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/ieee-802.15.4/uMac/Include
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/Common/
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/FunctionLib/
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/Flash/Internal
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/Lists
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/MemManager/Interface
-            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/OSAbstraction/Interface     
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/OSAbstraction/Interface
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/Panic/Interface/ 
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/PDM/Include 
-            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/SerialManager/Interface   
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/SerialManager/Interface
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/SerialManager/Source
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/TimersManager/Interface
-            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/TimersManager/Source         
-            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6/Build/Include    
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/TimersManager/Source
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6/Build/Include
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6
     )
     else()
     target_include_directories(nxp-k32w061-driver
         PUBLIC
             $ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/wireless_examples/openthread/enablement
+            $ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/utility
             $ENV{NXP_K32W061_SDK_ROOT}/components/serial_manager
             $ENV{NXP_K32W061_SDK_ROOT}/CMSIS/Include
             $ENV{NXP_K32W061_SDK_ROOT}/components/uart
@@ -188,6 +189,10 @@ if (SDK_RELEASE)
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/TimersManager/Source
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6/Build/Include
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/openthread/boards/dk6_jn5189/enablement
+            $ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/fmeas
+            $ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/inputmux
+            $ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/jn_rtc
             $ENV{NXP_K32W061_SDK_ROOT}/platform/utilities/debug_console/str
     )
 endif()

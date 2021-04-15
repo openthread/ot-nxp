@@ -28,21 +28,12 @@
 
 /**
  * @file
- *   This file includes k32w061 compile-time configuration constants
+ *   This file includes jn5189 compile-time configuration constants
  *   for OpenThread.
  */
 
-#ifndef OPENTHREAD_CORE_K32W061_CONFIG_H_
-#define OPENTHREAD_CORE_K32W061_CONFIG_H_
-
-/**
- * @def OPENTHREAD_CONFIG_LOG_OUTPUT
- *
- * The emsk platform provides an otPlatLog() function.
- */
-#ifndef OPENTHREAD_CONFIG_LOG_OUTPUT /* allow command line override */
-#define OPENTHREAD_CONFIG_LOG_OUTPUT OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED
-#endif
+#ifndef OPENTHREAD_CORE_JN5189_CONFIG_H_
+#define OPENTHREAD_CORE_JN5189_CONFIG_H_
 
 /**
  * @def OPENTHREAD_CONFIG_PLATFORM_INFO
@@ -50,32 +41,30 @@
  * The platform-specific string to insert into the OpenThread version string.
  *
  */
-#define OPENTHREAD_CONFIG_PLATFORM_INFO "K32W061"
+#ifndef OPENTHREAD_CONFIG_PLATFORM_INFO
+#define OPENTHREAD_CONFIG_PLATFORM_INFO "JN5189"
+#endif
 
 /**
- * @def SETTINGS_CONFIG_BASE_ADDRESS
+ * @def OPENTHREAD_CONFIG_LOG_OUTPUT
  *
- * The base address of settings.
- *
+ * The emsk platform provides an otPlatLog() function.
  */
-#define SETTINGS_CONFIG_BASE_ADDRESS 0
+#ifndef OPENTHREAD_CONFIG_LOG_OUTPUT /* allow command line override */
+#define OPENTHREAD_CONFIG_LOG_OUTPUT OPENTHREAD_CONFIG_LOG_OUTPUT_NONE
+#endif
 
 /**
- * @def SETTINGS_CONFIG_PAGE_SIZE
+ * @def OPENTHREAD_CONFIG_LOG_LEVEL
  *
- * The page size of settings.
- *
- */
-#define SETTINGS_CONFIG_PAGE_SIZE 0x200
-
-/**
- * @def SETTINGS_CONFIG_PAGE_NUM
- *
- * The page number of settings.
+ * The log level (used at compile time). If `OPENTHREAD_CONFIG_ENABLE_DYNAMIC_LOG_LEVEL`
+ * is set, this defines the most verbose log level possible. See
+ *`OPENTHREAD_CONFIG_INITIAL_LOG_LEVEL` to set the initial log level.
  *
  */
-
-#define SETTINGS_CONFIG_PAGE_NUM 64
+#ifndef OPENTHREAD_CONFIG_LOG_LEVEL
+#define OPENTHREAD_CONFIG_LOG_LEVEL OT_LOG_LEVEL_NONE
+#endif
 
 /**
  * @def RADIO_CONFIG_SRC_MATCH_ENTRY_NUM
@@ -83,23 +72,9 @@
  * The number of source address table entries.
  *
  */
+#ifndef RADIO_CONFIG_SRC_MATCH_ENTRY_NUM
 #define RADIO_CONFIG_SRC_MATCH_ENTRY_NUM 128
-
-/**
- * @def OPENTHREAD_CONFIG_ENABLE_SOFTWARE_RETRANSMIT
- *
- * Define to 1 if you want to enable software retransmission logic.
- *
- */
-/* TODO */
-
-/**
- * @def OPENTHREAD_CONFIG_ENABLE_SOFTWARE_CSMA_BACKOFF
- *
- * Define to 1 if you want to enable software CSMA-CA backoff logic.
- *
- */
-/* TODO */
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_NCP_HDLC_ENABLE
@@ -107,15 +82,9 @@
  * Define to 1 to enable NCP HDLC support.
  *
  */
+#ifndef OPENTHREAD_CONFIG_NCP_HDLC_ENABLE
 #define OPENTHREAD_CONFIG_NCP_HDLC_ENABLE 1
-
-/**
- * @def OPENTHREAD_SETTINGS_RAM
- *
- * Define to 1 if you want to use K32W061 Flash implementation.
- *
- */
-#define OPENTHREAD_SETTINGS_RAM 0
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE
@@ -123,7 +92,9 @@
  * The size of NCP message buffer in bytes.
  *
  */
+#ifndef OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE
 #define OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE 1024
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE
@@ -141,7 +112,9 @@
  * Define to 1 to enable the CoAP API.
  *
  */
+#ifndef OPENTHREAD_CONFIG_COAP_API_ENABLE
 #define OPENTHREAD_CONFIG_COAP_API_ENABLE 1
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_JOINER_ENABLE
@@ -149,7 +122,9 @@
  * Define to 1 to enable Joiner support.
  *
  */
+#ifndef OPENTHREAD_CONFIG_JOINER_ENABLE
 #define OPENTHREAD_CONFIG_JOINER_ENABLE 1
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
@@ -157,7 +132,9 @@
  * Define to 1 to enable Commissioner support.
  *
  */
+#ifndef OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
 #define OPENTHREAD_CONFIG_COMMISSIONER_ENABLE 1
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE
@@ -165,7 +142,9 @@
  * Define to 1 to enable UDP forward support.
  *
  */
+#ifndef OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE
 #define OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE 1
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE
@@ -173,7 +152,9 @@
  * Define to 1 to enable the Border Router service.
  *
  */
+#ifndef OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE
 #define OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE 1
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
@@ -181,7 +162,9 @@
  * Define to 1 to enable the DHCP CLIENT service.
  *
  */
+#ifndef OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
 #define OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE 1
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
@@ -189,7 +172,9 @@
  * Define to 1 to enable the DHCP SERVER service.
  *
  */
+#ifndef OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
 #define OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE 1
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
@@ -211,4 +196,14 @@
 #define OPENTHREAD_CONFIG_DIAG_ENABLE 0
 #endif
 
-#endif // OPENTHREAD_CORE_K32W061_CONFIG_H_
+/**
+ * @def OPENTHREAD_CONFIG_MLE_MAX_CHILDREN
+ *
+ * The maximum number of children.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MLE_MAX_CHILDREN
+#define OPENTHREAD_CONFIG_MLE_MAX_CHILDREN 30
+#endif
+
+#endif // OPENTHREAD_CORE_JN5189_CONFIG_H_
