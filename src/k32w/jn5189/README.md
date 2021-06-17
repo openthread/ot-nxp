@@ -229,4 +229,4 @@ fe80:0:0:0:5c91:c61:b67c:271c
 
 For a list of all available commands, visit [OpenThread CLI Reference README.md][cli].
 
-[cli]: https://github.com/openthread/openthread/blob/master/src/cli/README.md
+[cli]: https://github.com/openthread/openthread/blob/main/src/cli/README.md
