@@ -29,6 +29,15 @@
 cmake_minimum_required(VERSION 3.10.2)
 project(ot-nxp VERSION 0.2.0)
 
+include("${PROJECT_SOURCE_DIR}/openthread/etc/cmake/functions.cmake")
+
+set(OT_PACKAGE_VERSION "" CACHE STRING "OpenThread Package Version")
+if(OT_PACKAGE_VERSION STREQUAL "")
+    ot_git_version(OT_PACKAGE_VERSION)
+    message(STATUS "Setting default package version: ${OT_PACKAGE_VERSION}")
+endif()
+message(STATUS "Package Version: ${OT_PACKAGE_VERSION}")
+
 if (OT_BUILD_RT)
     if (OT_BUILD_RT1060)
         set(PLAT_LIB "openthread-rt1060")
