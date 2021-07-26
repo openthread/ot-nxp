@@ -34,77 +34,10 @@
  *
  */
 
-/* TODO: add required SDK files + CMakes rules */
-//#include <freertos/FreeRTOS.h>
-//#include <freertos/task.h>
-
-#include <assert.h>
-#include <openthread/cli.h>
-#include <openthread/tasklet.h>
-#include <openthread/platform/toolchain.h>
-
-#include "platform-rt1060.h"
-
-static void run_cli(void *aContext)
-{
-    OT_UNUSED_VARIABLE(aContext);
-
-pseudo_reset:
-
-    otSysInit(0, NULL);
-
-    otSysApiLock();
-
-    size_t instanceSize = 0;
-
-    // Get the instance size.
-    otInstanceInit(NULL, &instanceSize);
-    void *instanceBuffer = malloc(instanceSize);
-
-    otInstance *instance = otInstanceInit(instanceBuffer, &instanceSize);
-
-    assert(instance != NULL);
-
-    otCliUartInit(instance);
-    otSysApiUnlock();
-
-    while (!otSysPseudoResetWasRequested())
-    {
-        otSysMainloopContext mainloop;
-
-        otSysMainloopInit(&mainloop);
-
-        otSysApiLock();
-        otTaskletsProcess(instance);
-        otSysMainloopUpdate(instance, &mainloop);
-        otSysApiUnlock();
-
-        if (otSysMainloopPoll(&mainloop) >= 0)
-        {
-            otSysApiLock();
-            otSysMainloopProcess(instance, &mainloop);
-            otSysApiUnlock();
-        }
-        else
-        {
-            abort();
-        }
-    }
-
-    otInstanceFinalize(instance);
-    otSysDeinit();
-
-    goto pseudo_reset;
-
-    /* TODO */
-    // vTaskDelete(NULL);
-}
+#include "app_ot.h"
 
 int main(int argc, char *argv[])
 {
-    /* TODO: add required SDK files + CMakes rules */
-    // xTaskCreate(run_cli, "cli", 10 * 1024, NULL, 5, NULL);
-
-    /* add this call just for linking check */
-    run_cli(NULL);
+    appOtStart(argc, argv);
+    return 0;
 }

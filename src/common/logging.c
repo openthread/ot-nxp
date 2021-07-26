@@ -26,29 +26,24 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "platform-rt1060.h"
-
-/* TODO:
- * - Locking used in cli.c;
- * - Internal helper functions, check if needed otherwise delete them.
+/**
+ * @file logging.c
+ * Platform abstraction for the logging
+ *
  */
 
-void otSysApiLock(void)
-{
-    /* TODO */
-}
+#include <openthread-core-config.h>
+#include <openthread/config.h>
+#include <openthread/platform/logging.h>
+#include <openthread/platform/toolchain.h>
 
-void otSysApiUnlock(void)
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
+OT_TOOL_WEAK void otPlatLog(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat, ...)
 {
-    /* TODO */
-}
+    OT_UNUSED_VARIABLE(aLogLevel);
+    OT_UNUSED_VARIABLE(aLogRegion);
+    OT_UNUSED_VARIABLE(aFormat);
 
-void rt1060ApiLockInit(void)
-{
-    /* TODO */
+    /* Not used for ot stack log the OT_STACK_ENABLE_LOG should be enabled */
 }
-
-void rt1060ApiLockDeinit(void)
-{
-    /* TODO */
-}
+#endif

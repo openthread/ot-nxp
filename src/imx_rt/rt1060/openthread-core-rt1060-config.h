@@ -35,7 +35,21 @@
 #ifndef OT_RT_OPENTHREAD_CORE_RT_CONFIG_H_
 #define OT_RT_OPENTHREAD_CORE_RT_CONFIG_H_
 
-/* TODO: update this file with RT requred defines for OT stack */
+#ifdef OT_STACK_ENABLE_LOG
+#define LOG_ENABLE 1
+#define LOG_ENABLE_TIMESTAMP 1
+#include "fsl_component_log.h"
+/* Logging for ot stack */
+#define OPENTHREAD_CONFIG_LOG_PLATFORM 1
+#define OPENTHREAD_CONFIG_LOG_LEVEL 5
+#define OPENTHREAD_CONFIG_LOG_DEFINE_AS_MACRO_ONLY 1
+#define OPENTHREAD_CONFIG_PLAT_LOG_MACRO_NAME OT_STACK_LOG
+LOG_MODULE_DEFINE(ot_stack_log, kLOG_LevelDebug)
+#define OT_STACK_LOG(aLogLevel, aRegion, fmt, ...) \
+    OT_UNUSED_VARIABLE(aLogLevel);                 \
+    OT_UNUSED_VARIABLE(aRegion);                   \
+    LOG_DBG("%s " fmt, "", ##__VA_ARGS__)
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_PLATFORM_INFO
@@ -61,7 +75,7 @@
  * When defined to 1, the platform MUST implement the otPlatFlash* APIs instead of the otPlatSettings* APIs.
  *
  */
-#define OPENTHREAD_CONFIG_PLATFORM_FLASH_API_ENABLE 1
+#define OPENTHREAD_CONFIG_PLATFORM_FLASH_API_ENABLE 0
 
 /**
  * @def OPENTHREAD_CONFIG_LOG_LEVEL
@@ -79,7 +93,7 @@
  *
  * The number of message buffers in buffer pool
  */
-#define OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS 50
+#define OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS 256
 
 /**
  * @def OPENTHREAD_CONFIG_MLE_STEERING_DATA_SET_OOB_ENABLE
@@ -97,7 +111,9 @@
  * Define to 1 to enable the CoAP API.
  *
  */
+#ifndef OPENTHREAD_CONFIG_COAP_API_ENABLE
 #define OPENTHREAD_CONFIG_COAP_API_ENABLE 1
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE
@@ -189,7 +205,7 @@
  * Define to 1 to enable NCP UART support.
  *
  */
-#define OPENTHREAD_CONFIG_NCP_UART_ENABLE 1
+#define OPENTHREAD_CONFIG_NCP_HDLC_ENABLE 1
 
 /**
  * @def OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
@@ -198,6 +214,40 @@
  *
  */
 #define OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE 1
+
+/**
+ * @def OPENTHREAD_CONFIG_PLATFORM_RADIO_SPINEL_RX_FRAME_BUFFER_SIZE
+ *
+ * Specifies the rx frame buffer size used by `SpinelInterface` in RCP host (posix) code. This is applicable/used when
+ * `RadioSpinel` platform is used.
+ *
+ */
+#define OPENTHREAD_CONFIG_PLATFORM_RADIO_SPINEL_RX_FRAME_BUFFER_SIZE 512
+
+/**
+ * @def OPENTHREAD_CONFIG_PING_SENDER_ENABLE
+ *
+ * Enable Ping sender functionnality
+ *
+ */
+#define OPENTHREAD_CONFIG_PING_SENDER_ENABLE 1
+
+/**
+ * @def OPENTHREAD_CONFIG_THREAD_VERSION
+ *
+ * Force 1.1 version by default to be able to support K32W0 transceiver
+ *
+ */
+#undef OPENTHREAD_CONFIG_THREAD_VERSION
+#define OPENTHREAD_CONFIG_THREAD_VERSION OT_THREAD_VERSION_1_1
+
+/**
+ * @def OPENTHREAD_CONFIG_MAC_DEFAULT_MAX_FRAME_RETRIES_DIRECT
+ *
+ * Mac default max frame retries value
+ *
+ */
+#define OPENTHREAD_CONFIG_MAC_DEFAULT_MAX_FRAME_RETRIES_DIRECT 30
 
 /**
  * @def PACKAGE

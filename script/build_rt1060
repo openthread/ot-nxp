@@ -37,6 +37,18 @@ readonly OT_OPTIONS=(
     "-DCMAKE_BUILD_TYPE=MinSizeRel"
     "-DOT_PLATFORM=external"
     "-DOT_SLAAC=ON"
+    "-DOT_THREAD_VERSION=1.1"
+    "-DOT_EXTERNAL_MBEDTLS=nxp-rt1060-mbedtls"
+    "-DOT_STACK_ENABLE_LOG=OFF"
+    "-DOT_APP_NCP=OFF"
+    "-DOT_APP_RCP=OFF"
+    "-DOT_RCP=OFF"
+    # Default OT app cli is disabled, instead a freeRTOS version of the CLI is built
+    "-DOT_APP_CLI=OFF"
+    "-DOT_APP_CLI_FREERTOS=ON"
+    "-DOT_BUILD_RT=ON"
+    "-DOT_BUILD_RT1060=ON"
+    "-DOT_COMPILE_WARNING_AS_ERROR=ON"
 )
 
 build()
@@ -47,7 +59,8 @@ build()
     cd "${builddir}"
 
     # shellcheck disable=SC2068
-    cmake -GNinja -DOT_APP_NCP=OFF -DOT_BUILD_RT=ON -DOT_BUILD_RT1060=ON -DOT_COMPILE_WARNING_AS_ERROR=ON $@ "${OT_SRCDIR}"
+    # Default OT app cli is disabled, instead a freeRTOS version of the CLI is built
+    cmake -GNinja "$@" "${OT_SRCDIR}"
 
     if [[ -n ${OT_CMAKE_NINJA_TARGET[*]} ]]; then
         ninja "${OT_CMAKE_NINJA_TARGET[@]}"
@@ -88,7 +101,7 @@ main()
 
     options+=("$@")
 
-    options+=(" -DSDK_RELEASE=$SDK_RELEASE")
+    options+=("-DSDK_RELEASE=$SDK_RELEASE")
 
     build "${options[@]}"
 }

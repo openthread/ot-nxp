@@ -27,18 +27,18 @@
 #
 
 add_library(openthread-rt1060
-    alarm.c
-    api_lock.c
-    diag.c
-    entropy.c
-    flash.c
-    logging.c
-    memory.c
-    misc.c
-    radio.cpp
-    spinel_hdlc.cpp
-    system.c
-    uart.c
+    ../../common/alarm_freertos.c
+    ../../common/diag.c
+    ../../common/entropy.c
+    ../../common/flash_nvm.c
+    ../../common/logging.c
+    ../platform/misc.c
+    ../platform/radio.cpp
+    ../platform/spinel_hdlc.cpp
+    ../platform/system.c
+    ../../common/uart.c
+    board/pin_mux.c
+    board/hardware_init.c
 )
 
 set_target_properties(
@@ -50,14 +50,20 @@ set_target_properties(
 
 target_link_libraries(openthread-rt1060
     PRIVATE
-        nxp-rt1060-driver
         ot-config
         openthread-hdlc
         openthread-spinel-rcp
         openthread-platform
     PUBLIC
+        nxp-rt1060-driver
         -T${PROJECT_SOURCE_DIR}/src/imx_rt/rt1060/RT1060.ld
-        -Wl,--gc-sections -Wl,-Map=$<TARGET_PROPERTY:NAME>.map
+        -Wl,-Map=$<TARGET_PROPERTY:NAME>.map,-print-memory-usage
+)
+
+#OT needs freeRTOS config dependency
+target_link_libraries(ot-config
+    INTERFACE
+    openthread-rt1060
 )
 
 target_compile_definitions(openthread-rt1060
@@ -68,6 +74,13 @@ target_compile_definitions(openthread-rt1060
 target_compile_options(openthread-rt1060
     PRIVATE
         ${OT_CFLAGS}
+        -DSPINEL_UART_INSTANCE=3
+        -DSPINEL_ENABLE_RX_RTS=1
+        -DSPINEL_ENABLE_TX_RTS=1
+        -DOT_PLAT_SYS_CRYPTO_INIT
+        -DOT_PLAT_SYS_LOG_MANAGEMENT
+        -DOT_PLAT_SYS_NVM_SUPPORT
+        -DOPENTHREAD_FTD=1
         -Wno-unknown-pragmas
         -Wno-sign-compare
         -Wno-unused-function
@@ -76,7 +89,11 @@ target_compile_options(openthread-rt1060
 )
 
 target_include_directories(openthread-rt1060
+    PUBLIC
+        board
+        freertos
     PRIVATE
+        ${PROJECT_SOURCE_DIR}/src/common
         ${OT_PUBLIC_INCLUDES}
         ${PROJECT_SOURCE_DIR}/openthread/examples/platforms
         ${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/repo/include

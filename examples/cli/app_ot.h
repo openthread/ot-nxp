@@ -26,31 +26,29 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "openthread/platform/misc.h"
+/**
+ * @file
+ *   This file includes interface definitions for app ot.
+ *
+ */
 
-void otPlatReset(otInstance *aInstance)
-{
-    OT_UNUSED_VARIABLE(aInstance);
+#ifndef APP_OT
+#define APP_OT
 
-    /* TODO */
+#include <openthread/instance.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * This function inits and starts OpenThread task.
+ *
+ */
+void appOtStart(int argc, char *argv[]);
+
+#ifdef __cplusplus
 }
+#endif
 
-otPlatResetReason otPlatGetResetReason(otInstance *aInstance)
-{
-    OT_UNUSED_VARIABLE(aInstance);
-
-    /* TODO */
-}
-
-void otPlatAssertFail(const char *aFilename, int aLineNumber)
-{
-    OT_UNUSED_VARIABLE(aFilename);
-    OT_UNUSED_VARIABLE(aLineNumber);
-
-    /* TODO */
-}
-
-void otPlatWakeHost(void)
-{
-    // TODO: implement an operation to wake the host from sleep state.
-}
+#endif // APP_OT

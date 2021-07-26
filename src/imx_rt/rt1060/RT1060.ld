@@ -31,53 +31,90 @@
  *   TODO: Add linker instructions for RT1060
  */
  
-GROUP (
-  libm.a
-)
-
 /* Entry Point */
 ENTRY(Reset_Handler)
 
+/* NVM */
+NVMSectorCountLink = DEFINED(gNVMSectorCountLink_d) ? gNVMSectorCountLink_d : 4;
+
+_ROM_START_ = 0x60002400;
+_ROM_END_ = 0x6057FFFF;
+
+/*** NVM Configuration End ***/
+NV_STORAGE_SECTOR_SIZE = 0x1000;  /* 4k flash sector size */
+NV_STORAGE_MAX_SECTORS = NVMSectorCountLink;
+NVM_AREA_SIZE = NV_STORAGE_SECTOR_SIZE * NV_STORAGE_MAX_SECTORS;
+STORAGE_AREA_SIZE  = NVM_AREA_SIZE;
+STORAGE_AREA_START = _ROM_END_ - STORAGE_AREA_SIZE + 1;
+NV_STORAGE_START_ADDRESS = STORAGE_AREA_START;
+NV_STORAGE_END_ADDRESS = NV_STORAGE_START_ADDRESS + NVM_AREA_SIZE - 1;
+
+m_text_end         = STORAGE_AREA_START -1;
+m_text_start       = _ROM_START_;
+m_text_size        = STORAGE_AREA_START - m_text_start;
+
 HEAP_SIZE  = DEFINED(__heap_size__)  ? __heap_size__  : 0x0400;
 STACK_SIZE = DEFINED(__stack_size__) ? __stack_size__ : 0x0400;
-M_VECTOR_RAM_SIZE = DEFINED(__ram_vector_table__) ? 0x0200 : 0x0;
+VECTOR_RAM_SIZE = DEFINED(__ram_vector_table__) ? 0x00000400 : 0;
 
 /* Specify the memory areas */
 MEMORY
 {
-  m_interrupts          (RX)  : ORIGIN = 0x00000000, LENGTH = 0x00000200
-  m_flash_config        (RX)  : ORIGIN = 0x00000400, LENGTH = 0x00000010
-  m_text                (RX)  : ORIGIN = 0x00000410, LENGTH = 0x0007FBF0
-  m_data                (RW)  : ORIGIN = 0x1FFF8000, LENGTH = 0x00020000
+  m_flash_config        (RX)  : ORIGIN = 0x60000000, LENGTH = 0x00001000
+  m_ivt                 (RX)  : ORIGIN = 0x60001000, LENGTH = 0x00001000
+  m_interrupts          (RX)  : ORIGIN = 0x60002000, LENGTH = 0x00000400
+  m_text                (RX)  : ORIGIN = m_text_start, LENGTH = m_text_size
+  NVM_region            (RW)  : ORIGIN = STORAGE_AREA_START, LENGTH = STORAGE_AREA_SIZE
+  m_data2               (RW)  : ORIGIN = 0x20000000, LENGTH = 0x00020000
+  m_data                (RW)  : ORIGIN = 0x20200000, LENGTH = 0x000C0000
 }
 
 /* Define output sections */
 SECTIONS
 {
-  /* The startup code goes first into internal flash */
+  __NCACHE_REGION_START = ORIGIN(m_data2);
+  __NCACHE_REGION_SIZE  = 0;
+
+  .flash_config :
+  {
+    . = ALIGN(4);
+    __FLASH_BASE = .;
+    KEEP(* (.boot_hdr.conf))     /* flash config section */
+    . = ALIGN(4);
+  } > m_flash_config
+
+  ivt_begin= ORIGIN(m_flash_config) + LENGTH(m_flash_config);
+
+  .ivt : AT(ivt_begin)
+  {
+    . = ALIGN(4);
+	KEEP(* (.boot_hdr.ivt))           /* ivt section */
+	KEEP(* (.boot_hdr.boot_data))     /* boot section */
+	KEEP(* (.boot_hdr.dcd_data))      /* dcd section */
+    . = ALIGN(4);
+  } > m_ivt
+
+  /* The startup code goes first into internal RAM */
   .interrupts :
   {
     __VECTOR_TABLE = .;
+    __Vectors = .;
     . = ALIGN(4);
     KEEP(*(.isr_vector))     /* Startup code */
     . = ALIGN(4);
   } > m_interrupts
 
-  .flash_config :
-  {
-    . = ALIGN(4);
-    KEEP(*(.FlashConfig))    /* Flash Configuration Field (FCF) */
-    . = ALIGN(4);
-  } > m_flash_config
-
-  /* The program code and other data goes into internal flash */
+  /* The program code and other data goes into internal RAM */
   .text :
   {
     . = ALIGN(4);
-    *(.text)                 /* .text sections (code) */
-    *(.text*)                /* .text* sections (code) */
-    *(.rodata)               /* .rodata sections (constants, strings, etc.) */
-    *(.rodata*)              /* .rodata* sections (constants, strings, etc.) */
+    *(EXCLUDE_FILE(
+        /* Exclude flash and frequently executed functions from XIP */
+        *fsl_adapter_flexspi_nor_flash.c.obj
+        *mflash_drv.c.obj
+        *fsl_flexspi.c.obj
+    ) .text)                 /* .text sections (code) */
+    *(.rodata .rodata.* .constdata .constdata.*)
     *(.glue_7)               /* glue arm to thumb code */
     *(.glue_7t)              /* glue thumb to arm code */
     *(.eh_frame)
@@ -159,23 +196,13 @@ SECTIONS
   __etext = .;    /* define a global symbol at end of code */
   __DATA_ROM = .; /* Symbol is used by startup for data initialization */
 
-  /* reserve MTB memory at the beginning of m_data */
-  .mtb : /* MTB buffer address as defined by the hardware */
-  {
-    . = ALIGN(8);
-    _mtb_start = .;
-    KEEP(*(.mtb_buf)) /* need to KEEP Micro Trace Buffer as not referenced by application */
-    . = ALIGN(8);
-    _mtb_end = .;
-  } > m_data
-
   .interrupts_ram :
   {
     . = ALIGN(4);
     __VECTOR_RAM__ = .;
     __interrupts_ram_start__ = .; /* Create a global symbol at data start */
     *(.m_interrupts_ram)     /* This is a user defined section */
-    . += M_VECTOR_RAM_SIZE;
+    . += VECTOR_RAM_SIZE;
     . = ALIGN(4);
     __interrupts_ram_end__ = .; /* Define a global symbol at data end */
   } > m_data
@@ -188,14 +215,38 @@ SECTIONS
     . = ALIGN(4);
     __DATA_RAM = .;
     __data_start__ = .;      /* create a global symbol at data start */
+    *(m_usb_dma_init_data)
+    /* Explicit placement of flash and frequently executed functions in RAM */
+    *fsl_adapter_flexspi_nor_flash.c.obj
+    *mflash_drv.c.obj
+    *fsl_flexspi.c.obj
     *(.data)                 /* .data sections */
     *(.data*)                /* .data* sections */
     KEEP(*(.jcr*))
     . = ALIGN(4);
+    PROVIDE(__start_NVM_TABLE = .);
+    KEEP(*(.NVM_TABLE));
+    PROVIDE(__stop_NVM_TABLE = .);
+    . = ALIGN(4);
     __data_end__ = .;        /* define a global symbol at data end */
   } > m_data
+  __NDATA_ROM = __DATA_ROM + (__data_end__ - __data_start__);
+  .ncache.init : AT(__NDATA_ROM)
+  {
+    __noncachedata_start__ = .;   /* create a global symbol at ncache data start */
+    *(NonCacheable.init)
+    . = ALIGN(4);
+    __noncachedata_init_end__ = .;   /* create a global symbol at initialized ncache data end */
+  } > m_data
+  . = __noncachedata_init_end__;
+  .ncache :
+  {
+    *(NonCacheable)
+    . = ALIGN(4);
+    __noncachedata_end__ = .;     /* define a global symbol at ncache data end */
+  } > m_data
 
-  __DATA_END = __DATA_ROM + (__data_end__ - __data_start__);
+  __DATA_END = __NDATA_ROM + (__noncachedata_init_end__ - __noncachedata_start__);
   text_end = ORIGIN(m_text) + LENGTH(m_text);
   ASSERT(__DATA_END <= text_end, "region m_text overflowed with text and data")
 
@@ -206,6 +257,7 @@ SECTIONS
     . = ALIGN(4);
     __START_BSS = .;
     __bss_start__ = .;
+    *(m_usb_dma_noninit_data)
     *(.bss)
     *(.bss*)
     *(COMMON)
@@ -223,20 +275,26 @@ SECTIONS
     . += HEAP_SIZE;
     __HeapLimit = .;
     __heap_limit = .; /* Add for _sbrk */
-  } > m_data
+  } > m_data2
 
   .stack :
   {
     . = ALIGN(8);
-    . += STACK_SIZE;
-  } > m_data
+    __StackLimit = .;
+      . += STACK_SIZE;
+    __StackTop = .;
+  } > m_data2
 
-  /* Initializes stack on the end of block */
-  __StackTop   = ORIGIN(m_data) + LENGTH(m_data);
-  __StackLimit = __StackTop - STACK_SIZE;
   PROVIDE(__stack = __StackTop);
 
+  /* Remove this section to keep the nvm section on writting the device */
+  .NVM :
+  {
+    FILL(0xFFFFFFFF);
+    . = ORIGIN(NVM_region) + LENGTH(NVM_region) - 1;
+    BYTE(0xFF)
+  } > NVM_region
   .ARM.attributes 0 : { *(.ARM.attributes) }
 
-  ASSERT(__StackLimit >= __HeapLimit, "region m_data overflowed with stack and heap")
+  ASSERT(__StackLimit >= __HeapLimit, "region m_data2 overflowed with stack and heap")
 }
