@@ -1,4 +1,4 @@
-# OpenThread on NXP RT1060 (host) + K32W061 (rcp) Example
+# OpenThread on NXP RT1060 (host) + K32W061 (rcp) example (Experimental support)
 
 This directory contains example platform drivers for the [NXP RT1060][rt1060] platform.
 
