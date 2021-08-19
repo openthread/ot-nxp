@@ -31,5 +31,5 @@ if(OT_BUILD_RT)
 endif()
 
 if(OT_BUILD_K32W061 OR OT_BUILD_JN5189)
-    add_subdirectory(k32w)
+    add_subdirectory(k32w0)
 endif()

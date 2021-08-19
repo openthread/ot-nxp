@@ -39,7 +39,7 @@ target_compile_definitions(ot-config INTERFACE
 set(OT_PUBLIC_INCLUDES ${OT_PUBLIC_INCLUDES} PARENT_SCOPE)
 
 set(COMM_FLAGS
-    -I${PROJECT_SOURCE_DIR}/examples/platforms/k32w/k32w061/
+    -I${PROJECT_SOURCE_DIR}/examples/platforms/k32w0/k32w061/
 )
 if(OT_CFLAGS MATCHES "-pedantic-errors")
     string(REPLACE "-pedantic-errors" "" OT_CFLAGS "${OT_CFLAGS}")
@@ -50,7 +50,7 @@ if(OT_CFLAGS MATCHES "-Wcast-align")
 endif()
 
 add_library(openthread-k32w061
-    ${K32W_COMM_SOURCES}
+    ${K32W0_COMM_SOURCES}
     $<TARGET_OBJECTS:openthread-platform-utils>
 )
 
@@ -63,8 +63,8 @@ set_target_properties(openthread-k32w061
 target_link_libraries(openthread-k32w061
     PUBLIC
         ${OT_MBEDTLS}                         
-        ${K32W_LIBS}
-        -T${PROJECT_SOURCE_DIR}/src/k32w/k32w061/k32w061.ld
+        ${K32W0_LIBS}
+        -T${PROJECT_SOURCE_DIR}/src/k32w0/k32w061/k32w061.ld
         -Wl,--gc-sections
         -Wl,-Map=$<TARGET_PROPERTY:NAME>.map
     PRIVATE
@@ -86,7 +86,7 @@ target_compile_options(openthread-k32w061
 target_include_directories(openthread-k32w061
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/k32w061
-        ${K32W_INCLUDES}
+        ${K32W0_INCLUDES}
         ${OT_PUBLIC_INCLUDES}
 )
 

@@ -38,8 +38,10 @@
 #include "fsl_clock.h"
 #include "fsl_ctimer.h"
 #include "fsl_device_registers.h"
+#include "fsl_os_abstraction.h"
 #include "fsl_wtimer.h"
 #include "openthread-system.h"
+#include <common/logging.hpp>
 #include <openthread/platform/alarm-milli.h>
 #include <openthread/platform/diag.h>
 
@@ -59,9 +61,7 @@
 
 /* Timer frequency in Hz needed for 1ms tick */
 #define TARGET_FREQ 1000U
-/* Wake Timer max count value that is loaded in the register */
-#define TIMER0_MAX_COUNT_VALUE 0xffffffff
-#define TIMER1_MAX_COUNT_VALUE 0x0fffffff
+#define MAX_TIMESTAMP_VALUE_MS 0x7CFFFFF
 
 static bool     sEventFired = false;
 static uint32_t refClk;
@@ -75,7 +75,10 @@ static ctimer_match_config_t sMatchConfig = {.enableCounterReset = false,
                                              .outPinInitState    = false,
                                              .enableInterrupt    = true};
 #else
-static uint32_t sRemainingTicks;
+static TMR_tsActivityWakeTimerEvent otTimer;
+static void                         TMR_ScheduleActivityCallback(void);
+static uint32_t                     sAcumulatedTimestamp = 0;
+static uint32_t                     sLastTimestamp       = 0;
 #endif
 
 /* Stub function for notifying application of wakeup */
@@ -107,19 +110,13 @@ void K32WAlarmInit(void)
     NVIC_EnableIRQ(Timer0_IRQn);
 
 #else
-    // RESET_PeripheralReset(kWKT_RST_SHIFT_RSTn);
-    WTIMER_Init();
 
-    /* Get clk frequency and use prescale to lower it */
-    refClk = CLOCK_GetFreq(kCLOCK_Xtal32k);
-
-    /* Wake timer 0 is 41 bits long and is used for keepig the timestamp */
+    /* Handles WTIMER init inside, Wake timer 0 is 41 bits long and is used for keepig the timestamp */
     Timestamp_Init();
 
-    /* Wake timer 1 is 28 bits long and is used for alarm events, including waking up the MCU
-       from sleep */
-    WTIMER_EnableInterrupts(WTIMER_TIMER1_ID);
-    NVIC_SetPriority(WAKE_UP_TIMER1_IRQn, gStackTimer_IsrPrio_c >> (8 - __NVIC_PRIO_BITS));
+    /* Get clk frequency and use prescale to lower it */
+    refClk           = CLOCK_GetFreq(kCLOCK_Xtal32k);
+    otTimer.u8Status = TMR_E_ACTIVITY_FREE;
 #endif
 }
 
@@ -132,22 +129,17 @@ void K32WAlarmClean(void)
     NVIC_ClearPendingIRQ(Timer0_IRQn);
 #else
     Timestamp_Deinit();
-    WTIMER_StopTimer(WTIMER_TIMER1_ID);
-    ALARM_LOG("WTIMER_StopTimer");
-
-    NVIC_DisableIRQ(WAKE_UP_TIMER0_IRQn);
-    NVIC_ClearPendingIRQ(WAKE_UP_TIMER0_IRQn);
-    NVIC_DisableIRQ(WAKE_UP_TIMER1_IRQn);
-    NVIC_ClearPendingIRQ(WAKE_UP_TIMER1_IRQn);
+    TMR_eRemoveActivity(&otTimer);
 #endif
 }
 
 void K32WAlarmProcess(otInstance *aInstance)
 {
+    OSA_InterruptDisable();
     if (sEventFired)
     {
-        // sEventFired = false;
-
+        sEventFired = false;
+        OSA_InterruptEnable();
 #if OPENTHREAD_ENABLE_DIAG
 
         if (otPlatDiagModeGet())
@@ -159,6 +151,10 @@ void K32WAlarmProcess(otInstance *aInstance)
         {
             otPlatAlarmMilliFired(aInstance);
         }
+    }
+    else
+    {
+        OSA_InterruptEnable();
     }
 }
 
@@ -172,26 +168,43 @@ void otPlatAlarmMilliStartAt(otInstance *aInstance, uint32_t aT0, uint32_t aDt)
 
     CTIMER_SetupMatch(CTIMER0, kCTIMER_Match_0, &sMatchConfig);
 #else
+    uint64_t targetTicks = 0;
+
     /* Calculate the difference between now and the requested timestamp aT0 - this time will be
        substracted from the total time until the event needs to fire */
     uint32_t timestamp = otPlatAlarmMilliGetNow();
-    timestamp          = timestamp - aT0;
 
-    uint64_t targetTicks = ((aDt - timestamp) * refClk) / TARGET_FREQ;
-
-    /* Because timer 1 is only 28 bits long we need to take into account and event longer than this
-       so we arm the timer with the maximum value and re-arm with the remaing time once it fires */
-    if (targetTicks < TIMER1_MAX_COUNT_VALUE)
+    otLogInfoUtil("Start timer: timestamp:%d, aTo:%d, aDt:%d", timestamp, aT0, aDt);
+    if (timestamp >= aT0)
     {
-        ALARM_LOG("WTIMER_StartTimer targetTicks = %d", targetTicks);
-        WTIMER_StartTimer(WTIMER_TIMER1_ID, targetTicks);
-        sRemainingTicks = 0;
+        timestamp = timestamp - aT0;
     }
     else
     {
-        ALARM_LOG("WTIMER_StartTimer targetTicks = %d", TIMER1_MAX_COUNT_VALUE);
-        WTIMER_StartTimer(WTIMER_TIMER1_ID, TIMER1_MAX_COUNT_VALUE);
-        sRemainingTicks = targetTicks - TIMER1_MAX_COUNT_VALUE;
+        timestamp = (~0UL) - aT0 + timestamp + 1;
+    }
+
+    if (aDt > timestamp)
+    {
+        targetTicks = MILLISECONDS_TO_TICKS32K((aDt - timestamp));
+    }
+
+    if (targetTicks > 0)
+    {
+        TMR_eRemoveActivity(&otTimer);
+        if (targetTicks > WTIMER1_MAX_VALUE)
+        {
+            /* Because timer 1 is only 28 bits long we need to take into account and event longer than this
+            so we arm the timer with the maximum value and re-arm with the remaing time once it fires */
+            targetTicks = WTIMER1_MAX_VALUE;
+        }
+        TMR_eScheduleActivity32kTicks(&otTimer, targetTicks, TMR_ScheduleActivityCallback);
+    }
+    else
+    {
+        sEventFired = true;
+        otSysEventSignalPending();
+        App_NotifyWakeup();
     }
 
 #endif
@@ -207,9 +220,7 @@ void otPlatAlarmMilliStop(otInstance *aInstance)
     sMatchConfig.matchValue = 0;
     CTIMER_SetupMatch(CTIMER0, kCTIMER_Match_0, &sMatchConfig);
 #else
-    sRemainingTicks = 0;
-    WTIMER_StopTimer(WTIMER_TIMER1_ID);
-    ALARM_LOG("WTIMER_StopTimer");
+    TMR_eRemoveActivity(&otTimer);
 #endif
 }
 
@@ -218,11 +229,20 @@ uint32_t otPlatAlarmMilliGetNow(void)
 #if ALARM_USE_CTIMER
     return CTIMER0->TC;
 #else
-    uint64_t tempTstamp = Timestamp_GetCounter32bit();
 
-    tempTstamp *= TARGET_FREQ;
-    tempTstamp /= refClk;
-    return (uint32_t)tempTstamp;
+    uint64_t tiks = Timestamp_GetCounter32bit();
+
+    tiks *= TARGET_FREQ;
+    tiks /= refClk;
+    uint32_t retTimestamp = (uint32_t)tiks;
+
+    if (sLastTimestamp > retTimestamp)
+    {
+        sAcumulatedTimestamp += MAX_TIMESTAMP_VALUE_MS;
+    }
+    sLastTimestamp = retTimestamp;
+
+    return retTimestamp + sAcumulatedTimestamp;
 #endif
 }
 
@@ -239,25 +259,12 @@ void CTIMER0_IRQHandler(void)
     otSysEventSignalPending();
 }
 #else
-void WAKE_UP_TIMER1_DriverIRQHandler()
+
+static void TMR_ScheduleActivityCallback(void)
 {
     ALARM_LOG("");
-    WTIMER_StopTimer(WTIMER_TIMER1_ID);
-    if (sRemainingTicks)
-    {
-        ALARM_LOG("WTIMER_StartTimer sRemainingTicks= %d", sRemainingTicks);
-        WTIMER_StartTimer(WTIMER_TIMER1_ID, sRemainingTicks);
-        sRemainingTicks = 0;
-    }
-    else
-    {
-        sEventFired = true;
-        App_NotifyWakeup();
-    }
-
-    if (sEventFired)
-    {
-        otSysEventSignalPending();
-    }
+    sEventFired = true;
+    App_NotifyWakeup();
+    otSysEventSignalPending();
 }
 #endif

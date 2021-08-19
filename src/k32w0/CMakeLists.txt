@@ -32,7 +32,7 @@ list(APPEND OT_PLATFORM_DEFINES
     "JENNIC_CHIP_FAMILY_JN518x"
     "JENNIC_CHIP_FAMILY_NAME=_JN518x"
     "USE_SDK_OSA=0"
-    "SDK_DEBUGCONSOLE=0"  
+    "SDK_DEBUGCONSOLE=0"
 )
 
 list(APPEND OT_PUBLIC_DEFINES
@@ -93,7 +93,7 @@ else()
     )
 endif()
 
-set(K32W_COMM_SOURCES
+set(K32W0_COMM_SOURCES
     platform/alarm.c
     platform/diag.c
     platform/entropy.c
@@ -109,22 +109,22 @@ set(K32W_COMM_SOURCES
 )
 
 if (SDK_RELEASE)
-    list(APPEND K32W_COMM_SOURCES
+    list(APPEND K32W0_COMM_SOURCES
         $ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/utilities/fsl_assert.c
     )
 else()
-    list(APPEND K32W_COMM_SOURCES
+    list(APPEND K32W0_COMM_SOURCES
         $ENV{NXP_K32W061_SDK_ROOT}/platform/utilities/assert/fsl_assert.c
     )
 endif()
 
-set(K32W_LIBS
+set(K32W0_LIBS
     $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/ieee-802.15.4/lib/libMiniMac.a
-    $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/PDM/Library/libPDM.a   
+    $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/PDM/Library/libPDM.a
     $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/lib/libRadio.a
 )
 
-set(K32W_INCLUDES
+set(K32W0_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/openthread/examples/platforms
 )

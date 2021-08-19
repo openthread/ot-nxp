@@ -61,6 +61,8 @@
 #define RADIO_LOG(...)
 #endif
 extern void BOARD_LedDongleToggle(void);
+extern void OSA_InterruptEnable(void);
+extern void OSA_InterruptDisable(void);
 
 /* Defines */
 #define BIT_SET(arg, posn) ((arg) |= (1ULL << (posn)))
@@ -82,10 +84,11 @@ extern void BOARD_LedDongleToggle(void);
 #define K32W_RX_BUFFERS (8) /* max number of RX buffers */
 
 /* check IEEE Std. 802.15.4 - 2015: Table 8-81 - MAC sublayer constants */
-#define MAC_TX_ATTEMPTS (4)
+#define MAC_TX_RETRIES (3)
 #define MAC_TX_CSMA_MIN_BE (3)
 #define MAC_TX_CSMA_MAX_BE (5)
 #define MAC_TX_CSMA_MAX_BACKOFFS (4)
+#define MAC_MAX_TX_RETRIES (15)
 
 /* Structures */
 typedef struct
@@ -222,7 +225,7 @@ static otError          sTxStatus;                        /* Status of the lates
 static otRadioFrame     sTxOtFrame;                       /* OT TX Frame to be send */
 static uint8_t          sTxData[OT_RADIO_FRAME_MAX_SIZE]; /* mPsdu buffer for sTxOtFrame */
 static tsRxFrameFormat *pLastRxFrame       = NULL;
-static uint8_t          sTxMacRetries      = MAC_TX_ATTEMPTS;
+static uint8_t          sTxMacRetries      = MAC_TX_RETRIES;
 static uint8_t          sTxMacCsmaBackoffs = MAC_TX_CSMA_MAX_BACKOFFS;
 
 static bool_t sAllowDeviceToSleep = FALSE;
@@ -342,7 +345,15 @@ otError otPlatRadioEnable(otInstance *aInstance)
     vMMAC_EnableInterrupts(K32WISR);
     vMMAC_ConfigureInterruptSources(E_MMAC_INT_TX_COMPLETE | E_MMAC_INT_RX_HEADER | E_MMAC_INT_RX_COMPLETE);
     vMMAC_ConfigureRadio();
-    vMMAC_SetTxParameters(sTxMacRetries, MAC_TX_CSMA_MIN_BE, MAC_TX_CSMA_MAX_BE, sTxMacCsmaBackoffs);
+    /* The uMAC function receives total MAC attepts but OT sends MAC retries as param so it's not counting
+       the initial transmission */
+
+    /* HW can retry maximum MAC_MAX_TX_RETRIES */
+    if ((sTxMacRetries + 1) > MAC_MAX_TX_RETRIES)
+    {
+        sTxMacRetries = MAC_MAX_TX_RETRIES - 1;
+    }
+    vMMAC_SetTxParameters(sTxMacRetries + 1, MAC_TX_CSMA_MIN_BE, MAC_TX_CSMA_MAX_BE, sTxMacCsmaBackoffs);
 
     if (sRadioInitForLp)
     {
@@ -603,7 +614,13 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
     {
         sTxMacRetries      = aFrame->mInfo.mTxInfo.mMaxFrameRetries;
         sTxMacCsmaBackoffs = aFrame->mInfo.mTxInfo.mMaxCsmaBackoffs;
-        vMMAC_SetTxParameters(sTxMacRetries, MAC_TX_CSMA_MIN_BE, MAC_TX_CSMA_MAX_BE, sTxMacCsmaBackoffs);
+
+        /* HW can retry maximum MAC_MAX_TX_RETRIES */
+        if ((sTxMacRetries + 1) > MAC_MAX_TX_RETRIES)
+        {
+            sTxMacRetries = MAC_MAX_TX_RETRIES - 1;
+        }
+        vMMAC_SetTxParameters(sTxMacRetries + 1, MAC_TX_CSMA_MIN_BE, MAC_TX_CSMA_MAX_BE, sTxMacCsmaBackoffs);
     }
 
     /* stop rx is handled by uMac tx function */
@@ -626,11 +643,15 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance)
     int16_t rssiValSigned = 0;
     bool_t  stateChanged  = FALSE;
 
+    otEXPECT((sState == OT_RADIO_STATE_SLEEP) || (sState == OT_RADIO_STATE_RECEIVE));
+
     /* in RCP designs, the RSSI function is called while the radio is in
      * OT_RADIO_STATE_RECEIVE. Turn off the radio before reading RSSI,
      * otherwise we may end up waiting until a packet is received
      * (in i16Radio_GetRSSI, while loop)
      */
+
+    OSA_InterruptDisable();
 
     if (sState == OT_RADIO_STATE_RECEIVE)
     {
@@ -647,6 +668,8 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance)
         K32WEnableReceive(TRUE);
     }
 
+    OSA_InterruptEnable();
+
     rssiValSigned = i16Radio_BoundRssiValue(rssiValSigned);
 
     /* RSSI reported by radio is in 1/4 dBm step,
@@ -654,6 +677,7 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance)
      */
     rssidBm = (int8_t)(rssiValSigned >> 2);
 
+exit:
     return rssidBm;
 }
 
@@ -859,6 +883,10 @@ static void K32WISR(uint32_t u32IntBitmap)
     default:
         break;
     }
+
+#if USE_RTOS
+    otSysEventSignalPending();
+#endif
 }
 /**
  * Process the MAC Header of the latest received packet
@@ -1006,7 +1034,6 @@ static bool K32WCheckIfFpRequired(tsRxFrameFormat *aRxFrame)
 static void K32WProcessRxFrames(otInstance *aInstance)
 {
     tsRxFrameFormat *pRxMacFormatFrame = NULL;
-    uint32_t         savedInterrupts;
 
     while ((pRxMacFormatFrame = K32WPopRxRingBuffer(&sRxRing)) != NULL)
     {
@@ -1020,13 +1047,13 @@ static void K32WProcessRxFrames(otInstance *aInstance)
         }
         memset(pRxMacFormatFrame, 0, sizeof(tsRxFrameFormat));
 
-        MICRO_DISABLE_AND_SAVE_INTERRUPTS(savedInterrupts);
+        OSA_InterruptDisable();
         sRxFrameInProcess = NULL;
         if (sIsRxDisabled)
         {
             K32WEnableReceive(TRUE);
         }
-        MICRO_RESTORE_INTERRUPTS(savedInterrupts);
+        OSA_InterruptEnable();
     }
 }
 
@@ -1228,16 +1255,15 @@ static void K32WPushRxRingBuffer(rxRingBuffer *aRxRing, tsRxFrameFormat *aRxFram
 static tsRxFrameFormat *K32WPopRxRingBuffer(rxRingBuffer *aRxRing)
 {
     tsRxFrameFormat *rxFrame = NULL;
-    uint32_t         savedInterrupts;
 
-    MICRO_DISABLE_AND_SAVE_INTERRUPTS(savedInterrupts);
+    OSA_InterruptDisable();
     if (!K32WIsEmptyRxRingBuffer(aRxRing))
     {
         rxFrame         = aRxRing->buffer[aRxRing->tail];
         aRxRing->isFull = FALSE;
         aRxRing->tail   = (aRxRing->tail + 1) % K32W_RX_BUFFERS;
     }
-    MICRO_RESTORE_INTERRUPTS(savedInterrupts);
+    OSA_InterruptEnable();
 
     return rxFrame;
 }

@@ -33,8 +33,8 @@ OT_CMAKE_NINJA_TARGET=${OT_CMAKE_NINJA_TARGET:-}
 
 readonly OT_SRCDIR="$(pwd)"
 readonly OT_OPTIONS=(
-    "-DCMAKE_TOOLCHAIN_FILE=src/k32w/jn5189/arm-none-eabi.cmake"
-    "-DCMAKE_BUILD_TYPE=Debug"
+    "-DCMAKE_TOOLCHAIN_FILE=src/k32w0/jn5189/arm-none-eabi.cmake"
+    "-DCMAKE_BUILD_TYPE=MinSizeRel"
     "-DOT_PLATFORM=external"
     "-DOT_SLAAC=ON"
 )
@@ -47,7 +47,7 @@ build()
     cd "${builddir}"
 
     # shellcheck disable=SC2068
-    cmake -GNinja -DOT_BUILD_K32W=ON -DOT_BUILD_JN5189=ON -DOT_COMPILE_WARNING_AS_ERROR=ON -DOT_MBEDTLS_CONFIG_FILE=\"mbedtls-config.h\" $@ "${OT_SRCDIR}"
+    cmake -GNinja -DOT_BUILD_K32W0=ON -DOT_BUILD_JN5189=ON -DOT_COMPILE_WARNING_AS_ERROR=ON -DOT_MBEDTLS_CONFIG_FILE=\"mbedtls-config.h\" $@ "${OT_SRCDIR}"
 
     if [[ -n ${OT_CMAKE_NINJA_TARGET[*]} ]]; then
         ninja "${OT_CMAKE_NINJA_TARGET[@]}"
