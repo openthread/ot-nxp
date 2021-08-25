@@ -32,14 +32,14 @@
  *
  */
 
-#include "platform-rt1060.h"
+#include "ot_platform_common.h"
 
 #include <openthread/platform/radio.h>
 
 #include "spinel_hdlc.hpp"
 #include <lib/spinel/radio_spinel.hpp>
 
-static ot::Spinel::RadioSpinel<ot::RT::HdlcInterface, otSysMainloopContext> sRadioSpinel;
+static ot::Spinel::RadioSpinel<ot::RT::HdlcInterface, otInstance> sRadioSpinel;
 
 void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64)
 {
@@ -359,28 +359,18 @@ otRadioState otPlatRadioGetState(otInstance *aInstance)
     return sRadioSpinel.GetState();
 }
 
-void rt1060RadioInit()
+void otPlatRadioInit(void)
 {
     sRadioSpinel.GetSpinelInterface().Init();
-
-    /* TODO: update the Init call */
-    // sRadioSpinel.Init(aResetRadio, aRestoreDataSetFromNcp);
+    sRadioSpinel.Init(true, false, false);
 }
 
-void rt1060RadioProcess(otInstance *aInstance)
-{
-    (void)aInstance;
-
-    /* TODO: update the Process call */
-    // sRadioSpinel.Process(*aMainloop);
-}
-
-void rt1060RadioDeinit(void)
+void otPlatRadioDeinit(void)
 {
     sRadioSpinel.Deinit();
 }
 
-void rt1060RadioUpdate(otSysMainloopContext *aMainloop)
+void otPlatRadioProcess(const otInstance *aInstance)
 {
-    sRadioSpinel.GetSpinelInterface().Update(*aMainloop);
+    sRadioSpinel.Process(*aInstance);
 }

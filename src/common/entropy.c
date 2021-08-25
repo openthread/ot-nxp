@@ -26,82 +26,41 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "platform-rt1060.h"
+/**
+ * @file
+ *   This file implements an entropy source based on TODO.
+ *
+ */
 
-#include <openthread/platform/alarm-milli.h>
-#include <openthread/platform/diag.h>
+#include <openthread/platform/entropy.h>
 
-static uint64_t sAlarmT0   = 0;
-static uint64_t sAlarmDt   = 0;
-static bool     sIsRunning = false;
+#include "fsl_adapter_rng.h"
+#include <utils/code_utils.h>
 
-uint64_t otPlatTimeGet(void)
+void otPlatRandomInit(void)
 {
-    /* TODO */
-
-    return 0;
+    hal_rng_status_t status = HAL_RngInit();
+    assert(status == kStatus_HAL_RngSuccess || status == KStatus_HAL_RngNotSupport);
+    OT_UNUSED_VARIABLE(status);
 }
 
-void otPlatAlarmMilliStartAt(otInstance *aInstance, uint32_t aT0, uint32_t aDt)
+void otPlatRandomDeinit(void)
 {
-    OT_UNUSED_VARIABLE(aInstance);
-
-    sAlarmT0   = aT0;
-    sAlarmDt   = aDt;
-    sIsRunning = true;
-
-    /* TODO */
+    HAL_RngDeinit();
 }
 
-void otPlatAlarmMilliStop(otInstance *aInstance)
+otError otPlatEntropyGet(uint8_t *aOutput, uint16_t aOutputLength)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    otError status = OT_ERROR_NONE;
 
-    sIsRunning = false;
-
-    /* TODO */
-}
-
-uint32_t otPlatAlarmMilliGetNow(void)
-{
-    /* TODO */
-
-    return 0;
-}
-
-void rt1060AlarmInit(void)
-{
-    /* TODO */
-}
-
-void rt1060AlarmProcess(otInstance *aInstance)
-{
-    if (sIsRunning)
+    if (aOutput == NULL)
     {
-        if (sAlarmT0 + sAlarmDt <= otPlatAlarmMilliGetNow())
-        {
-            sIsRunning = false;
-
-#if OPENTHREAD_CONFIG_DIAG_ENABLE
-
-            if (otPlatDiagModeGet())
-            {
-                otPlatDiagAlarmFired(aInstance);
-            }
-            else
-#endif
-            {
-                otPlatAlarmMilliFired(aInstance);
-            }
-        }
+        status = OT_ERROR_INVALID_ARGS;
     }
-    /* TODO */
-}
+    else if (HAL_RngHwGetData(aOutput, aOutputLength) != kStatus_HAL_RngSuccess)
+    {
+        status = OT_ERROR_FAILED;
+    }
 
-/* TODO: internal helper functions, check if needed otherwise delete them */
-void rt1060AlarmUpdate(otSysMainloopContext *aMainloop)
-{
-    OT_UNUSED_VARIABLE(aMainloop);
-
-    /* TODO */
+    return status;
 }

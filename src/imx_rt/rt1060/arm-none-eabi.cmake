@@ -26,17 +26,60 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
-set(CMAKE_SYSTEM_NAME              Generic)
-set(CMAKE_SYSTEM_PROCESSOR         ARM)
+# TOOLCHAIN EXTENSION
+if(WIN32)
+    set(TOOLCHAIN_EXT ".exe")
+else()
+    set(TOOLCHAIN_EXT "")
+endif()
 
-set(CMAKE_C_COMPILER               arm-none-eabi-gcc)
-set(CMAKE_CXX_COMPILER             arm-none-eabi-g++)
-set(CMAKE_ASM_COMPILER             arm-none-eabi-as)
-set(CMAKE_RANLIB                   arm-none-eabi-ranlib)
 
-set(COMMON_C_FLAGS                 "-mthumb -fdata-sections -ffunction-sections -mcpu=cortex-m0plus -mfloat-abi=soft")
+# TOOLCHAIN_DIR AND NANO LIBRARY
+set(TOOLCHAIN_DIR $ENV{ARMGCC_DIR})
+string(REGEX REPLACE "\\\\" "/" TOOLCHAIN_DIR "${TOOLCHAIN_DIR}")
+
+if(NOT TOOLCHAIN_DIR)
+    message(STATUS "***ARMGCC_DIR is not set, assume toolchain bins are in your PATH***")
+    set(TOOLCHAIN_BIN_DIR "")
+else()
+    message(STATUS "TOOLCHAIN_DIR: " ${TOOLCHAIN_DIR})
+    set(TOOLCHAIN_BIN_DIR ${TOOLCHAIN_DIR}/bin/)
+endif()
+
+# TARGET_TRIPLET
+set(TARGET_TRIPLET "arm-none-eabi")
+
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_PROCESSOR arm)
+
+set(CMAKE_C_COMPILER ${TOOLCHAIN_BIN_DIR}${TARGET_TRIPLET}-gcc${TOOLCHAIN_EXT})
+set(CMAKE_CXX_COMPILER ${TOOLCHAIN_BIN_DIR}${TARGET_TRIPLET}-g++${TOOLCHAIN_EXT})
+set(CMAKE_ASM_COMPILER ${TOOLCHAIN_BIN_DIR}${TARGET_TRIPLET}-gcc${TOOLCHAIN_EXT})
+
+message(STATUS "CMAKE_C_COMPILER: " ${CMAKE_C_COMPILER})
+
+set(CMAKE_C_COMPILER_FORCED TRUE)
+set(CMAKE_CXX_COMPILER_FORCED TRUE)
+
+set(CMAKE_OBJCOPY ${TOOLCHAIN_BIN_DIR}${TARGET_TRIPLET}-objcopy CACHE INTERNAL "objcopy tool")
+set(CMAKE_OBJDUMP ${TOOLCHAIN_BIN_DIR}${TARGET_TRIPLET}-objdump CACHE INTERNAL "objdump tool")
+
+set(COMMON_C_FLAGS                 "-mthumb -fdata-sections -ffunction-sections -mcpu=cortex-m7 -mfloat-abi=hard")
+set(COMMON_C_FLAGS                 "${COMMON_C_FLAGS} -Wall -mfpu=fpv5-d16 -fno-common -ffreestanding -fno-builtin -mapcs")
 
 set(CMAKE_C_FLAGS_INIT             "${COMMON_C_FLAGS} -std=gnu99")
-set(CMAKE_CXX_FLAGS_INIT           "${COMMON_C_FLAGS} -fno-exceptions -fno-rtti")
+
+set(CMAKE_CXX_FLAGS_INIT           "${COMMON_C_FLAGS} -fno-exceptions -fno-rtti -MMD -MP")
 set(CMAKE_ASM_FLAGS_INIT           "${COMMON_C_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS_INIT    "${COMMON_C_FLAGS} -specs=nano.specs -specs=nosys.specs")
+set(CMAKE_EXE_LINKER_FLAGS_INIT    "-u qspiflash_config -u image_vector_table -u boot_data -u dcd_data -specs=nano.specs -specs=nosys.specs -Xlinker --gc-sections -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb")
+
+#set(CMAKE_EXE_LINKER_FLAGS_INIT    "${COMMON_C_FLAGS} -specs=nano.specs -specs=nosys.specs -Xlinker --gc-sections")
+
+set(CMAKE_C_FLAGS_DEBUG            "-g -O0")
+set(CMAKE_CXX_FLAGS_DEBUG          "-g -O0")
+set(CMAKE_ASM_FLAGS_DEBUG          "-g")
+
+set(CMAKE_C_FLAGS_RELEASE          "-Os")
+set(CMAKE_CXX_FLAGS_RELEASE        "-Os")
+set(CMAKE_ASM_FLAGS_RELEASE        "")
+

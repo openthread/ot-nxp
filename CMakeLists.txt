@@ -87,25 +87,41 @@ target_include_directories(ot-config INTERFACE
 add_subdirectory(src)
 add_subdirectory(third_party)
 
-if (OT_BUILD_RT)
-    if (OT_BUILD_RT1060)
-	add_executable(ot-cli
-	    ${PROJECT_SOURCE_DIR}/examples/cli/main.c
-	)
-
-	target_include_directories(ot-cli PRIVATE ${COMMON_INCLUDES})
-
-	target_link_libraries(ot-cli PRIVATE
-	    openthread-cli-ftd
-	    ${OT_PLATFORM_LIB}
-	    openthread-ftd
-	    ${OT_PLATFORM_LIB}
-	    ${OT_MBEDTLS}
-	    ot-config
-	    -Wl,--start-group mbedcrypto openthread-${PLATFORM} -Wl,--end-group
-	)
-
-	install(TARGETS ot-cli
-	    DESTINATION bin)
+if (OT_APP_CLI_FREERTOS)
+    ## If OT logging is enabled add a dependency to SDK log components
+    if (OT_STACK_ENABLE_LOG)
+        target_link_libraries(ot-config
+            INTERFACE
+            nxp-${PLATFORM}-driver)
+        target_compile_definitions(ot-config
+            INTERFACE
+            -DOT_STACK_ENABLE_LOG)
     endif()
+
+    ### Build the OT cli application
+    set(OT_CLI_APP_SRC
+        ${PROJECT_SOURCE_DIR}/examples/cli/main.c
+        ${PROJECT_SOURCE_DIR}/openthread/examples/apps/cli/cli_uart.cpp
+    )
+
+    add_executable(ot-cli-${PLATFORM}
+        ${PROJECT_SOURCE_DIR}/examples/cli/rtos/app_ot_freertos.c
+        ${PROJECT_SOURCE_DIR}/examples/cli/main.c
+    )
+
+    target_sources(ot-cli-${PLATFORM} PRIVATE
+        ${OT_CLI_APP_SRC}
+    )
+    target_include_directories(ot-cli-${PLATFORM} PRIVATE
+        ${PROJECT_SOURCE_DIR}/examples/cli
+        ${PROJECT_SOURCE_DIR}/openthread/examples/platforms
+    )
+
+    target_link_libraries(ot-cli-${PLATFORM} PUBLIC
+        openthread-cli-ftd
+        openthread-ftd
+        ${OT_PLATFORM_LIB}
+        ot-config
+        -Wl,--start-group openthread-${PLATFORM} -Wl,--end-group
+    )
 endif()

@@ -29,8 +29,9 @@
 #ifndef OT_RT_SPINEL_HDLC_HPP_
 #define OT_RT_SPINEL_HDLC_HPP_
 
-#include "openthread-core-rt1060-config.h"
-#include "platform-rt1060.h"
+#include "ot_platform_common.h"
+
+#include "fsl_component_serial_manager.h"
 
 #include "lib/spinel/spinel_interface.hpp"
 
@@ -107,80 +108,38 @@ public:
     /**
      * This method performs radio driver processing.
      *
-     * @param[in]  aContext  The context containing no thing, never used.
+     * @param[in]  aInstance  The ot instance
      *
      */
-    void Process(const otSysMainloopContext &aMainloop);
-
-    /**
-     * This methods updates the mainloop context.
-     *
-     * @param[in] aMainloop  A mainloop context.
-     *
-     */
-    void Update(otSysMainloopContext &aMainloop);
+    void Process(const otInstance &aInstance);
 
 private:
     enum
     {
-        /**
-         * Maximum spinel frame size.
-         *
-         */
-        kMaxFrameSize = ot::Spinel::SpinelInterface::kMaxFrameSize,
+        /* Ring buffer size should be >= to the RCP max TX buffer size value which is 2048 */
+        kMaxRingBufferSize = 2048,
 
-        /**
-         * Maximum wait time in Milliseconds for socket to become writable (see `SendFrame`).
-         *
-         */
-        kMaxWaitTime = 2000,
     };
 
-    void InitUart(void);
-    void DeinitUart(void);
-
-    int TryReadAndDecode(void);
-
-    /**
-     * This method waits for the UART file descriptor associated with the HDLC interface to become writable within
-     * `kMaxWaitTime` interval.
-     *
-     * @retval OT_ERROR_NONE   Socket is writable.
-     * @retval OT_ERROR_FAILED Socket did not become writable within `kMaxWaitTime`.
-     *
-     */
-    otError WaitForWritable(void);
-
-    /**
-     * This method writes a given frame to the socket.
-     *
-     * This is blocking call, i.e., if the UART is not writable, this method waits for it to become writable for
-     * up to `kMaxWaitTime` interval.
-     *
-     * @param[in] aFrame  A pointer to buffer containing the frame to write.
-     * @param[in] aLength The length (number of bytes) in the frame.
-     *
-     * @retval OT_ERROR_NONE    Frame was written successfully.
-     * @retval OT_ERROR_FAILED  Failed to write due to UART not becoming writable within `kMaxWaitTime`.
-     *
-     */
-    otError Write(const uint8_t *aFrame, uint16_t aLength);
-
-    static void HandleHdlcFrame(void *aContext, otError aError);
-    void        HandleHdlcFrame(otError aError);
+    SERIAL_MANAGER_HANDLE_DEFINE(otTransceiverSerialHandle);
+    SERIAL_MANAGER_READ_HANDLE_DEFINE(otTransceiverSerialReadHandle);
 
     ot::Spinel::SpinelInterface::ReceiveFrameCallback mReceiveFrameCallback;
     void *                                            mReceiveFrameContext;
     ot::Spinel::SpinelInterface::RxFrameBuffer &      mReceiveFrameBuffer;
 
-    ot::Hdlc::Decoder mHdlcDecoder;
-    uint8_t *         mUartRxBuffer;
+    ot::Hdlc::FrameBuffer<ot::Spinel::SpinelInterface::kMaxFrameSize> encoderBuffer;
+    ot::Hdlc::Encoder                                                 mHdlcEncoder;
+    ot::Hdlc::Decoder                                                 mHdlcDecoder;
 
-    int mUartFd;
+    uint8_t  s_ringBuffer[kMaxRingBufferSize];
+    void     InitUart(void);
+    void     DeinitUart(void);
+    uint32_t TryReadAndDecode(bool fullRead);
+    otError  Write(const uint8_t *aFrame, uint16_t aLength);
 
-    // Non-copyable, intentionally not implemented.
-    HdlcInterface(const HdlcInterface &);
-    HdlcInterface &operator=(const HdlcInterface &);
+    static void HandleHdlcFrame(void *aContext, otError aError);
+    void        HandleHdlcFrame(otError aError);
 };
 
 } // namespace RT

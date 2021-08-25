@@ -26,24 +26,35 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-/**
- * @file logging.c
- * Platform abstraction for the logging
- *
- */
+#include "openthread/platform/misc.h"
+#include "fsl_device_registers.h"
 
-#include <openthread-core-config.h>
-#include <openthread/config.h>
-#include <openthread/platform/logging.h>
-#include <openthread/platform/toolchain.h>
-
-#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
-OT_TOOL_WEAK void otPlatLog(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat, ...)
+void otPlatReset(otInstance *aInstance)
 {
-    OT_UNUSED_VARIABLE(aLogLevel);
-    OT_UNUSED_VARIABLE(aLogRegion);
-    OT_UNUSED_VARIABLE(aFormat);
+    OT_UNUSED_VARIABLE(aInstance);
+
+    NVIC_SystemReset();
+
+    while (1)
+    {
+    }
+}
+
+otPlatResetReason otPlatGetResetReason(otInstance *aInstance)
+{
+    OT_UNUSED_VARIABLE(aInstance);
+    return OT_PLAT_RESET_REASON_POWER_ON;
+}
+
+void otPlatAssertFail(const char *aFilename, int aLineNumber)
+{
+    OT_UNUSED_VARIABLE(aFilename);
+    OT_UNUSED_VARIABLE(aLineNumber);
 
     /* TODO */
 }
-#endif
+
+void otPlatWakeHost(void)
+{
+    // TODO: implement an operation to wake the host from sleep state.
+}

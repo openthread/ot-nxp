@@ -67,9 +67,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - gcc_ver: 4
-            gcc_download_url: https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q3-update/+download/gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar.bz2
-            gcc_extract_dir: gcc-arm-none-eabi-4_9-2015q3
           - gcc_ver: 5
             gcc_download_url: https://developer.arm.com/-/media/Files/downloads/gnu-rm/5_4-2016q3/gcc-arm-none-eabi-5_4-2016q3-20160926-linux.tar.bz2
             gcc_extract_dir: gcc-arm-none-eabi-5_4-2016q3
@@ -115,12 +112,26 @@ jobs:
         cd sdks
         unzip 02acef84909cb653e56c7d331710a9d8.zip
         rm -rf 02acef84909cb653e56c7d331710a9d8.zip
+        cd /tmp
+        mkdir -p sdk_rt1060
+        cd sdk_rt1060
+        wget https://mcuxpresso.nxp.com/eclipse/sdk/2.10.0/plugins/com.nxp.mcuxpresso.sdk.sdk_2.x_evk-mimxrt1060_2.10.0.201911251446.jar
+        unzip com.nxp.mcuxpresso.sdk.sdk_2.x_evk-mimxrt1060_2.10.0.201911251446.jar
+        rm -rf com.nxp.mcuxpresso.sdk.sdk_2.x_evk-mimxrt1060_2.10.0.201911251446.jar
+        cd sdks
+        unzip 9cf1ca6fbfbf8bf03df5c3d2fd2ac093.zip
+        rm -rf 9cf1ca6fbfbf8bf03df5c3d2fd2ac093.zip
+        cd /tmp
+        git clone https://github.com/NXPmicro/mcux-sdk.git
+        cp -r mcux-sdk/devices/MIMXRT1062/gcc sdk_rt1060/sdks/devices/MIMXRT1062/
+ 
         
     - name: Build
       run: |
         export PATH=/tmp/${{ matrix.gcc_extract_dir }}/bin:$PATH
         export NXP_K32W061_SDK_ROOT=/tmp/sdk_k32w061/sdks/
         export NXP_JN5189_SDK_ROOT=/tmp/sdk_jn5189/sdks/
+        export NXP_RT1060_SDK_ROOT=/tmp/sdk_rt1060/sdks/
         chmod +x $NXP_K32W061_SDK_ROOT/tools/imagetool/sign_images.sh
         chmod +x $NXP_JN5189_SDK_ROOT/tools/imagetool/sign_images.sh
         third_party/k32w061_sdk/mr3_fixes/patch_k32w061_mr3_sdk.sh
