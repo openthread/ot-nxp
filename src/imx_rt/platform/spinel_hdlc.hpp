@@ -113,6 +113,13 @@ public:
      */
     void Process(const otInstance &aInstance);
 
+    /**
+     * This method is called when RCP is reset to recreate the connection with it.
+     * Intentionally empty.
+     *
+     */
+    otError ResetConnection(void) { return OT_ERROR_NONE; }
+
 private:
     enum
     {
