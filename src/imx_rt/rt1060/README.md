@@ -27,10 +27,10 @@ $ ./script/bootstrap
 
 [mcuxpresso ide]: https://www.nxp.com/support/developer-resources/software-development-tools/mcuxpresso-software-and-tools/mcuxpresso-integrated-development-environment-ide:MCUXpresso-IDE
 
-- Download [IMXRT1060 SDK 2.10.0](https://mcuxpresso.nxp.com/).
+- Download [IMXRT1060 SDK 2.10.1](https://mcuxpresso.nxp.com/).
   Creating an nxp.com account is required before being able to download the
   SDK. Once the account is created, login and follow the steps for downloading
-  SDK_2.10.0_EVK-MIMXRT1060. In the SDK Builder UI selection you should select
+  SDK_2.10.1_EVK-MIMXRT1060. In the SDK Builder UI selection you should select
   the FreeRTOS and the BT/BLE component.
 
 ## Building the examples
@@ -79,7 +79,7 @@ Note: it is recommended to first [flash the K32W061 OT-RCP transceiver image](#F
 
 Connect to the DK6 board by plugging a mini-USB cable to the connector marked with _FTDI USB_. Also, make sure that jumpers jp4/JP7 are situated in the middle position (_JN UART0 - FTDI_).
 
-DK6 Flash Programmer can be found inside the [SDK][sdk_mcux] SDK_2.10.0_EVK-MIMXRT1060 previously downloaded at path `<sdk_path>/middleware/wireless/ethermind/port/pal/mcux/bluetooth/controller/k32w061/JN-SW-4407-DK6-Flash-Programmer`. This is a Windows application that can be installed using the .exe file. Once the application is installed, the COM port for K32W061 must be identified:
+DK6 Flash Programmer can be found inside the [SDK][sdk_mcux] SDK_EVK-MIMXRT1060 previously downloaded at path `<sdk_path>/middleware/wireless/ethermind/port/pal/mcux/bluetooth/controller/k32w061/JN-SW-4407-DK6-Flash-Programmer`. This is a Windows application that can be installed using the .exe file. Once the application is installed, the COM port for K32W061 must be identified:
 
 ```
 C:\nxp\DK6ProductionFlashProgrammer>DK6Programmer.exe  --list
@@ -87,11 +87,15 @@ Available connections:
 COM29
 ```
 
-The ot-rcp image can be found in the SDK_2.10.0_EVK-MIMXRT1060 previously downloaded at path `<sdk_path>/middleware/wireless/ethermind/port/pal/mcux/bluetooth/controller/k32w061/ot_rcp.bin`.
+The ot-rcp image has to be built. For that, follow the [K32W061 Readme][k32w061-readme].
+The new K32W061 ot-rcp binary will be located in `ot-nxp/build_k32w061/openthread/examples/apps/ncp/ot-rcp.bin`.
+
 Once the COM port is identified, the required binary can be flashed:
 
+[k32w061-readme]: ../../k32w0/k32w061/README.md
+
 ```
-C:\nxp\DK6ProductionFlashProgrammer>DK6Programmer.exe -s COM29 -p "<sdk_path>/middleware/wireless/ethermind/port/pal/mcux/bluetooth/controller/k32w061/ot-rcp.bin"
+C:\nxp\DK6ProductionFlashProgrammer>DK6Programmer.exe -s COM29 -p "<ot_rcp_path>\ot-rcp.bin"
 ```
 
 [sdk_mcux]: https://mcuxpresso.nxp.com/en/welcome
@@ -126,47 +130,26 @@ Right click on the Project -> C/C++ Build-> Tool Chain Editor -> NXP MCU Tools -
 
 - Create a debug configuration:
 
-```
-Right click on the Project -> Debug -> As->MCUXpresso IDE LinkServer (inc. CMSIS-DAP) probes -> OK -> Select elf file called ot-cli-rt1060
-```
+To create a new debug configuration for our application, we will duplicate an existing debug configaturation.
 
-- Set the _Connect script_ for the debug configuration to _RT1060_connect.scp_ from the dropdown list:
+- Create a debug configuration for the hello word projet
 
-```
-Right click on the Project -> Debug As -> Debug configurations... -> LinkServer Debugger
-```
+1. Click on "Import SDK example(s)..." on the bottom left window of MCUXpresso.
+2. Select the "evkmimxrt1060" SDK, click on "Next"
+3. Expand "demo_apps", select the "hello_word" example, click on next and then finish.
+4. Build the imported "Hello word" application by right clicking on the project and select "Build Project".
+5. Right click again on the project and select "Debug As" and click on "MCUXpresso IDE LinkServer" option. Doing this will flash the application on the board. Then click on the red "Terminate" button.
 
-![connect](../../../doc/img/imxrt1060/gdbdebugger.JPG)
+- Duplicate the hello word debug configaturation to create a new debug configuration for the ot_cli
 
-- Set the _Initialization Commands_ to:
-
-```
-Right click on the Project -> Debug As -> Debug configurations... -> Startup
-
-set non-stop on
-set pagination off
-set mi-async
-set remotetimeout 60000
-##target_extended_remote##
-set mem inaccessible-by-default ${mem.access}
-mon ondisconnect ${ondisconnect}
-set arm force-mode thumb
-${load}
-```
-
-![init](../../../doc/img/k32w/startup.JPG)
-
-- Disable auto build:
-
-```
-Right click on the Project -> Debug As -> Debug configurations... -> Main
-```
-
-![autobuild](../../../doc/img/imxrt1060/DisableAutoBuild.JPG)
-
-- Debug using the newly created configuration file:
-
-![debug](../../../doc/img/k32w/debug_start.JPG)
+1. Right click on the "Hello Word" project, select "Debug As" and then select "Debug Configurations".
+2. Right click on the "Hello Word" debug configuration and click on "Duplicate".
+3. Rename the Duplicated debug configuration "ot-cli".
+4. In the "C/C++ Application", click on "Browse" and select the ot-cli-rt1060 app (should be located in "ot-nxp/build_rt1060/ot-cli-rt1060"). Then click on Apply and Save.
+5. Click on "Organize Favorites".
+   ![MCU_Sett](../../../doc/img/imxrt1060/organize_favorites.png)
+6. Add the ot-cli debug configuration
+7. Run the ot-cli debug configuration
 
 [cmsis-dap]: https://os.mbed.com/handbook/CMSIS-DAP
 
@@ -180,58 +163,9 @@ Right click on the Project -> Debug As -> Debug configurations... -> Main
    - No parity
    - No flow control
 
-2. Open a terminal connection and start a new Thread network.
+2. Follow the process describe in [Interact with the OT CLI][validate_port].
 
-```bash
-> panid 0xabcd
-Done
-> ifconfig up
-Done
-> thread start
-Done
-```
-
-4. After a couple of seconds the node will become a Leader of the network.
-
-```bash
-> state
-Leader
-```
-
-5. Open a terminal connection on another board (supporting the cli openthread) and attach a node to the network.
-
-```bash
-> panid 0xabcd
-Done
-> ifconfig up
-Done
-> thread start
-Done
-```
-
-6. After a couple of seconds the second node will attach and become a Child.
-
-```bash
-> state
-Child
-```
-
-7. List all IPv6 addresses of the first board.
-
-```bash
-> ipaddr
-fdde:ad00:beef:0:0:ff:fe00:fc00
-fdde:ad00:beef:0:0:ff:fe00:9c00
-fdde:ad00:beef:0:4bcb:73a5:7c28:318e
-fe80:0:0:0:5c91:c61:b67c:271c
-```
-
-8. Choose one of them and send an ICMPv6 ping from the second board.
-
-```bash
-> ping fdde:ad00:beef:0:0:ff:fe00:fc00
-16 bytes from fdde:ad00:beef:0:0:ff:fe00:fc00: icmp_seq=1 hlim=64 time=8ms
-```
+[validate_port]: https://openthread.io/guides/porting/validate-the-port#interact-with-the-cli
 
 For a list of all available commands, visit [OpenThread CLI Reference README.md][cli].
 
