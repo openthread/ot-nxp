@@ -31,7 +31,7 @@ $ ./script/bootstrap
   Creating an nxp.com account is required before being able to download the
   SDK. Once the account is created, login and follow the steps for downloading
   SDK_2.10.1_EVK-MIMXRT1060. In the SDK Builder UI selection you should select
-  the FreeRTOS and the BT/BLE component.
+  the **FreeRTOS component**, the **BT/BLE component** and the **ARM GCC Toolchain**.
 
 ## Building the examples
 
