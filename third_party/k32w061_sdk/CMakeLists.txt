@@ -30,7 +30,7 @@ if (SDK_RELEASE)
     SET_SOURCE_FILES_PROPERTIES($ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/mcuxpresso/startup_k32w061.c PROPERTIES LANGUAGE CXX)
     
     add_library(nxp-k32w061-driver
-        $ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/wireless_examples/openthread/enablement/board.c
+        $ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/wireless_examples/openthread/reed/bm/board.c
         $ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/wireless_examples/openthread/enablement/board_utility.c
         $ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/wireless_examples/openthread/enablement/clock_config.c
         $ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/wireless_examples/openthread/enablement/pin_mux.c
@@ -72,7 +72,7 @@ if (SDK_RELEASE)
     
     add_library(nxp-k32w061-driver
         $ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/utility/board_utility.c
-        $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/openthread/boards/dk6_jn5189/enablement/board.c
+        $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/boards/dk6/board.c
         $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/openthread/boards/dk6_jn5189/enablement/clock_config.c
         $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/openthread/boards/dk6_jn5189/enablement/pin_mux.c
         $ENV{NXP_K32W061_SDK_ROOT}/components/serial_manager/serial_manager.c
@@ -120,7 +120,16 @@ target_compile_definitions(nxp-k32w061-driver
         -DgPWR_LDOMEM_0_9V_PD=0
         -DNO_SYSCORECLK_UPD=0
         -DENABLE_RAM_VECTOR_TABLE=1
+        -DgKBD_KeysCount_c=2
+        -DgUartAppConsole_d=1
 )
+
+if (OT_APP_RCP)
+    target_compile_definitions(nxp-k32w061-driver
+        PUBLIC
+            -DgUartHwFlowControl_d
+    ) 
+endif()
 
 target_compile_options(nxp-k32w061-driver
     PRIVATE
@@ -162,6 +171,9 @@ if (SDK_RELEASE)
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/TimersManager/Source
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6/Build/Include
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/RNG/Interface
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/GPIO
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/Keyboard/Interface
     )
     else()
     target_include_directories(nxp-k32w061-driver
@@ -189,10 +201,17 @@ if (SDK_RELEASE)
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/TimersManager/Source
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6/Build/Include
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/RNG/Interface
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/GPIO
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/Keyboard/Interface
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/boards/dk6
             $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/openthread/boards/dk6_jn5189/enablement
+            $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/openthread/boards/dk6_k32w061/reed/bm
             $ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/fmeas
             $ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/inputmux
             $ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/jn_rtc
+            $ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/pint
+            $ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/spifi
             $ENV{NXP_K32W061_SDK_ROOT}/platform/utilities/debug_console/str
     )
 endif()

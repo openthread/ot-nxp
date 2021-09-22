@@ -176,6 +176,36 @@ LOG_MODULE_DEFINE(ot_stack_log, kLOG_LevelDebug)
 #endif
 
 /**
+ * @def OPENTHREAD_CONFIG_JOINER_ENABLE
+ *
+ * Define to 1 to enable Joiner support.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_JOINER_ENABLE
+#define OPENTHREAD_CONFIG_JOINER_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
+ *
+ * Define to 1 to enable Commissioner support.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
+#define OPENTHREAD_CONFIG_COMMISSIONER_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE
+ *
+ * Define to 1 to enable UDP forward support.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE
+#define OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE 1
+#endif
+
+/**
  * @def OPENTHREAD_CONFIG_MULTIPLE_INSTANCE_ENABLE
  *
  * Define to 1 to enable multiple instance support.
