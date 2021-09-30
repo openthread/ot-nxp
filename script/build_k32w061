@@ -38,16 +38,33 @@ readonly OT_OPTIONS=(
     "-DOT_PLATFORM=external"
     "-DOT_SLAAC=ON"
 )
+readonly OT_OPTIONS_RCP_ONLY_UART_FLOW_CONTROL=(
+    "-DOT_RCP_FLOW_CONTROL=ON"
+    "-DOT_APP_CLI=OFF"
+    "-DOT_FTD=OFF"
+    "-DOT_MTD=OFF"
+)
+readonly OT_OPTIONS_NO_RCP=(
+    "-DOT_APP_NCP=OFF"
+    "-DOT_APP_RCP=OFF"
+    "-DOT_RCP=OFF"
+)
 
 build()
 {
     local builddir="${OT_CMAKE_BUILD_DIR:-build_k32w061}"
-
+    local cmakeArgs=("${@}")
     mkdir -p "${builddir}"
     cd "${builddir}"
+    if [ "$1" = "ot_rcp_only_uart_flow_control" ]; then
+        cmakeArgs=("${@:2}")
+        rcp_folder_name="rcp_only_uart_flow_control"
+        mkdir -p ${rcp_folder_name}
+        cd ${rcp_folder_name}
+    fi
 
     # shellcheck disable=SC2068
-    cmake -GNinja -DOT_BUILD_K32W0=ON -DOT_BUILD_K32W061=ON -DOT_COMPILE_WARNING_AS_ERROR=ON -DOT_MBEDTLS_CONFIG_FILE=\"mbedtls-config.h\" ${@} "${OT_SRCDIR}"
+    cmake -GNinja -DOT_BUILD_K32W0=ON -DOT_BUILD_K32W061=ON -DOT_COMPILE_WARNING_AS_ERROR=ON -DOT_MBEDTLS_CONFIG_FILE=\"mbedtls-config.h\" ${cmakeArgs[@]} "${OT_SRCDIR}"
 
     if [[ -n ${OT_CMAKE_NINJA_TARGET[*]} ]]; then
         ninja "${OT_CMAKE_NINJA_TARGET[@]}"
@@ -92,12 +109,23 @@ main()
 
     echo "NXP_K32W061_SDK_ROOT set to " $NXP_K32W061_SDK_ROOT
 
-    local options=("${OT_OPTIONS[@]}")
-
+    echo "Building OT RCP image ..."
+    local options=("ot_rcp_only_uart_flow_control")
+    options+=("${OT_OPTIONS_RCP_ONLY_UART_FLOW_CONTROL[@]}")
+    options+=("${OT_OPTIONS[@]}")
     options+=("$@")
-
     options+=(" -DSDK_RELEASE=$SDK_RELEASE")
+    build "${options[@]}"
 
+    if [ $? -eq 1 ]; then
+        exit 1
+    fi
+
+    echo "Building OT without RCP image ..."
+    options=("${OT_OPTIONS_NO_RCP[@]}")
+    options+=("${OT_OPTIONS[@]}")
+    options+=("$@")
+    options+=(" -DSDK_RELEASE=$SDK_RELEASE")
     build "${options[@]}"
 }
 

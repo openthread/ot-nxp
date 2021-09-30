@@ -26,6 +26,8 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
+option(OT_RCP_FLOW_CONTROL "enable UART flow control for RCP" OFF)
+
 if (SDK_RELEASE)
     SET_SOURCE_FILES_PROPERTIES($ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/mcuxpresso/startup_k32w061.c PROPERTIES LANGUAGE CXX)
     
@@ -124,7 +126,7 @@ target_compile_definitions(nxp-k32w061-driver
         -DgUartAppConsole_d=1
 )
 
-if (OT_APP_RCP)
+if (OT_RCP_FLOW_CONTROL)
     target_compile_definitions(nxp-k32w061-driver
         PUBLIC
             -DgUartHwFlowControl_d
