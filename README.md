@@ -19,8 +19,8 @@ To learn more about building and running the examples please check:
 - [OpenThread on NXP JN5189 examples][jn5189-page]
 - [OpenThread on RT1060 examples][rt1060-page]
 
-[k32w061-page]: src/k32w/k32w061/README.md
-[jn5189-page]: src/k32w/jn5189/README.md
+[k32w061-page]: src/k32w0/k32w061/README.md
+[jn5189-page]: src/k32w0/jn5189/README.md
 [rt1060-page]: src/imx_rt/rt1060/README.md
 
 # Contributing
