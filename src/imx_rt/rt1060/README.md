@@ -88,7 +88,7 @@ COM29
 ```
 
 The ot-rcp image has to be built. For that, follow the [K32W061 Readme][k32w061-readme].
-The new K32W061 ot-rcp binary will be located in `ot-nxp/build_k32w061/openthread/examples/apps/ncp/ot-rcp.bin`.
+The new K32W061 ot-rcp binary will be located in `ot-nxp/build_k32w061/rcp_only_uart_flow_control/openthread/examples/apps/ncp/ot-rcp.bin`.
 
 Once the COM port is identified, the required binary can be flashed:
 
