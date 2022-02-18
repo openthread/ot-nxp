@@ -174,7 +174,7 @@ void otPlatAlarmMilliStartAt(otInstance *aInstance, uint32_t aT0, uint32_t aDt)
        substracted from the total time until the event needs to fire */
     uint32_t timestamp = otPlatAlarmMilliGetNow();
 
-    otLogInfoUtil("Start timer: timestamp:%d, aTo:%d, aDt:%d", timestamp, aT0, aDt);
+    otLogInfoPlat("Start timer: timestamp:%d, aTo:%d, aDt:%d", timestamp, aT0, aDt);
     if (timestamp >= aT0)
     {
         timestamp = timestamp - aT0;
