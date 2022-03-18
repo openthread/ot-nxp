@@ -39,6 +39,6 @@ Please only use the OpenThread name and marks when accurately referencing this s
 
 OpenThread support is available on GitHub:
 
-- Bugs and feature requests pertaining to the OpenThread on NXP platform — [submit to the openthread/ot-nxp Issue Tracker](https://github.com/openthread/ot-nxp/issues)
+- Bugs and feature requests pertaining to the OpenThread on NXP platforms — [submit to the openthread/ot-nxp Issue Tracker](https://github.com/openthread/ot-nxp/issues)
 - OpenThread bugs and feature requests — [submit to the OpenThread Issue Tracker](https://github.com/openthread/openthread/issues)
 - Community Discussion - [ask questions, share ideas, and engage with other community members](https://github.com/openthread/openthread/discussions)
