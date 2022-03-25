@@ -104,12 +104,15 @@ static void moveData(uint8_t *pSrc, uint8_t *pDst)
     otSettingsBuffer.recordFreeLen = OT_SETTINGS_BUFFER_SIZE - otSettingsBuffer.recordLen;
 }
 
-void otPlatSettingsInit(otInstance *aInstance)
+void otPlatSettingsInit(otInstance *aInstance, const uint16_t *aSensitiveKeys, uint16_t aSensitiveKeysLength)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+    OT_UNUSED_VARIABLE(aSensitiveKeys);
+    OT_UNUSED_VARIABLE(aSensitiveKeysLength);
+
     if (!isInitialized)
     {
         isInitialized = true;
-        OT_UNUSED_VARIABLE(aInstance);
         NvModuleInit();
         FLib_MemSet((void *)&otSettingsBuffer, 0, sizeof(otSettingsBuffer));
         otSettingsBuffer.recordFreeLen = OT_SETTINGS_BUFFER_SIZE - otSettingsBuffer.recordLen;
