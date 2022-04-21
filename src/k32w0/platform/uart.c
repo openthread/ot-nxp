@@ -40,6 +40,8 @@
 #include "fsl_usart.h"
 
 /* Openthread general includes */
+#include "fsl_debug_console.h"
+#include "fsl_iocon.h"
 #include "openthread-system.h"
 #include "platform-k32w.h"
 #include <utils/code_utils.h>
@@ -54,14 +56,42 @@
 #error "Serial Manager and Uart driver cannot be used at the same time. Please choose just one."
 #endif
 
-#define K32W_UART_RX_BUFFER_SIZE 256
-#define K32W_UART_BAUD_RATE 115200
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
+#if ((UART_USE_DRIVER_LOG == 0) && (UART_USE_SERIAL_MGR_LOG == 0) && (UART_USE_SWO_LOG == 0))
+#error "No output interface enabled for OpenThread logging. Please choose just one."
+#endif
+
+#if (((UART_USE_DRIVER_LOG == 1) || (UART_USE_SERIAL_MGR_LOG == 1)) && (UART_USE_SWO_LOG == 1))
+#error "Serial Manager or Uart driver cannot be used at the same time with SWO for logging. Please choose just one."
+#endif
+#endif
+
+#ifndef OT_PLAT_UART_RX_BUFFER_SIZE
+#define OT_PLAT_UART_RX_BUFFER_SIZE 256
+#endif
+#ifndef OT_PLAT_UART_BAUD_RATE
+#define OT_PLAT_UART_BAUD_RATE 115200
+#endif
+
+#ifndef OT_PLAT_APP_UART_INSTANCE
+#define OT_PLAT_APP_UART_INSTANCE 0
+#endif
+
+#if (UART_USE_SWO_LOG == 1)
+/* For a different SWO pin, please update the necessary pin number and functionality */
+#ifndef SWO_LOG_PIN
+#define SWO_LOG_PIN 14U
+#endif
+#ifndef SWO_LOG_PIN_FUNC
+#define SWO_LOG_PIN_FUNC IOCON_FUNC5
+#endif
+#endif
 
 #if UART_USE_DRIVER
 /* Structures */
 typedef struct
 {
-    uint8_t buffer[K32W_UART_RX_BUFFER_SIZE];
+    uint8_t buffer[OT_PLAT_UART_RX_BUFFER_SIZE];
     uint8_t head;
     uint8_t tail;
     bool    isFull;
@@ -98,18 +128,23 @@ static bool sIsUartInitialized; /* Is UART module initialized? */
 #if UART_USE_DRIVER
 static bool           sIsTransmitDone; /* Transmit done for the latest user-data buffer */
 static usart_handle_t sUartHandleApp;  /* Handle to the UART module */
-static usart_handle_t sUartHandleLog;  /* Handle to the UART module */
 static rxRingBuffer   sUartRxRing0;    /* Receive Ring Buffer */
+#endif
+
+#if UART_USE_DRIVER_LOG
+static usart_handle_t sUartHandleLog; /* Handle to the UART module */
 #endif
 
 #if UART_USE_SERIAL_MGR
 uint8_t gShellSerMgrIf;
-uint8_t mOtSerMgrIfLog;
 
 OT_TOOL_WEAK serialInterfaceType_t ifType = gSerialMgrUsart_c;
-static uint8_t                     sRxBuffer[K32W_UART_RX_BUFFER_SIZE];
+static uint8_t                     sRxBuffer[OT_PLAT_UART_RX_BUFFER_SIZE];
+OT_TOOL_WEAK uint8_t               gOtAppUartInstance = OT_PLAT_APP_UART_INSTANCE;
+#endif
 
-OT_TOOL_WEAK uint8_t gOtAppUartInstance = 0;
+#if UART_USE_SERIAL_MGR_LOG
+uint8_t              mOtSerMgrIfLog;
 OT_TOOL_WEAK uint8_t gOtLogUartInstance = 1;
 #endif
 
@@ -122,7 +157,7 @@ void K32WUartProcess(void)
         K32WProcessReceive();
 #endif
 
-#if UART_USE_SERIAL_MGR
+#if !USE_SDK_OSA
         SerialProcess();
 #endif
     }
@@ -152,7 +187,7 @@ otError otPlatUartEnable(void)
         BOARD_Init_UART_Pins(0);
 
         USART_GetDefaultConfig(&config);
-        config.baudRate_Bps = K32W_UART_BAUD_RATE;
+        config.baudRate_Bps = OT_PLAT_UART_BAUD_RATE;
         config.enableTx     = true;
         config.enableRx     = true;
         config.rxWatermark  = kUSART_RxFifo1;
@@ -180,7 +215,7 @@ otError otPlatUartEnable(void)
 
         /* Register Serial Manager interface */
         status = Serial_InitInterface(&gShellSerMgrIf, ifType, gOtAppUartInstance);
-        status += Serial_SetBaudRate(gShellSerMgrIf, K32W_UART_BAUD_RATE);
+        status += Serial_SetBaudRate(gShellSerMgrIf, OT_PLAT_UART_BAUD_RATE);
 
         /* Install UART RX Callback handler */
         status += Serial_SetRxCallBack(gShellSerMgrIf, SerialMngr_RxCbApp, NULL);
@@ -235,11 +270,10 @@ otError otPlatUartFlush(void)
     return OT_ERROR_NOT_IMPLEMENTED;
 }
 
-#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED) || \
-    (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_NCP_SPINEL)
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
 void K32WLogInit()
 {
-#if UART_USE_DRIVER
+#if UART_USE_DRIVER_LOG
     usart_config_t config;
     uint32_t       kPlatformClock = CLOCK_GetFreq(kCLOCK_Fro32M);
 
@@ -260,11 +294,23 @@ void K32WLogInit()
 
 #endif
 
-#if UART_USE_SERIAL_MGR
+#if UART_USE_SERIAL_MGR_LOG
     Serial_InitManager();
 
     Serial_InitInterface(&mOtSerMgrIfLog, gSerialMgrUsart_c, gOtLogUartInstance);
-    Serial_SetBaudRate(mOtSerMgrIfLog, K32W_UART_BAUD_RATE);
+    Serial_SetBaudRate(mOtSerMgrIfLog, OT_PLAT_UART_BAUD_RATE);
+#endif
+
+#if UART_USE_SWO_LOG
+    CLOCK_EnableClock(kCLOCK_Iocon);
+    IOCON_PinMuxSet(IOCON, 0U, SWO_LOG_PIN, SWO_LOG_PIN_FUNC);
+    CLOCK_DisableClock(kCLOCK_Iocon);
+
+    /* Default instance for SWO debug console is 0. This is corresponds to port 0 if using SWO Trace viewers.
+     * OT_PLAT_APP_UART_INSTANCE value needs to be changed if another port is required.
+     */
+    int32_t status = DbgConsole_Init(OT_PLAT_APP_UART_INSTANCE, OT_PLAT_UART_BAUD_RATE, kSerialPort_Swo,
+                                     CLOCK_GetFreq(kCLOCK_MainClk));
 #endif
 }
 #endif
@@ -277,7 +323,7 @@ void K32WLogInit()
  */
 void K32WWriteBlocking(const uint8_t *aBuf, uint32_t len)
 {
-#if UART_USE_DRIVER
+#if UART_USE_DRIVER_LOG
     otEXPECT(sUartHandleLog.txState != UART_BUSY);
 
     sUartHandleLog.txState = UART_BUSY;
@@ -288,7 +334,7 @@ exit:
     return;
 #endif
 
-#if UART_USE_SERIAL_MGR
+#if UART_USE_SERIAL_MGR_LOG
     uint8_t status = Serial_SyncWrite(mOtSerMgrIfLog, (uint8_t *)aBuf, len);
     otEXPECT(status == 0);
 exit:
@@ -315,7 +361,7 @@ static void K32WProcessTransmit(void)
  */
 static void K32WProcessReceive(void)
 {
-    uint8_t  rx[K32W_UART_RX_BUFFER_SIZE];
+    uint8_t  rx[OT_PLAT_UART_RX_BUFFER_SIZE];
     uint16_t rxIndex = 0;
     uint8_t *pCharacter;
 
@@ -397,10 +443,10 @@ static void K32WPushRxRingBuffer(rxRingBuffer *aRxRing, uint8_t aCharacter)
 
     if (aRxRing->isFull)
     {
-        aRxRing->tail = (aRxRing->tail + 1) % K32W_UART_RX_BUFFER_SIZE;
+        aRxRing->tail = (aRxRing->tail + 1) % OT_PLAT_UART_RX_BUFFER_SIZE;
     }
 
-    aRxRing->head   = (aRxRing->head + 1) % K32W_UART_RX_BUFFER_SIZE;
+    aRxRing->head   = (aRxRing->head + 1) % OT_PLAT_UART_RX_BUFFER_SIZE;
     aRxRing->isFull = (aRxRing->head == aRxRing->tail);
 }
 
@@ -424,7 +470,7 @@ static uint8_t *K32WPopRxRingBuffer(rxRingBuffer *aRxRing)
     {
         pCharacter      = &(aRxRing->buffer[aRxRing->tail]);
         aRxRing->isFull = false;
-        aRxRing->tail   = (aRxRing->tail + 1) % K32W_UART_RX_BUFFER_SIZE;
+        aRxRing->tail   = (aRxRing->tail + 1) % OT_PLAT_UART_RX_BUFFER_SIZE;
     }
     EnableIRQ(USART0_IRQn);
 
@@ -469,14 +515,16 @@ static void SerialMngr_RxCbApp(void *param)
     uint16_t oneReadBytes = 0;
     OT_UNUSED_VARIABLE(param);
 
-    Serial_Read(gShellSerMgrIf, sRxBuffer, K32W_UART_RX_BUFFER_SIZE, &oneReadBytes);
+    Serial_Read(gShellSerMgrIf, sRxBuffer, OT_PLAT_UART_RX_BUFFER_SIZE, &oneReadBytes);
     otPlatUartReceived(sRxBuffer, oneReadBytes);
 }
 
-OT_TOOL_WEAK void SerialProcess(void)
+#if !USE_SDK_OSA
+void SerialProcess(void)
 {
     SerialManagerTask();
 }
+#endif
 #endif /* UART_USE_SERIAL_MGR */
 
 /**

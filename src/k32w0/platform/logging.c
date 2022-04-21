@@ -32,6 +32,7 @@
  *
  */
 
+#include "fsl_debug_console.h"
 #include "platform-k32w.h"
 #include <openthread-core-config.h>
 #include <utils/code_utils.h>
@@ -43,8 +44,7 @@
 #include "stdio.h"
 #include "string.h"
 
-#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED) || \
-    (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_NCP_SPINEL)
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
 
 /* defines */
 #define TX_BUFFER_SIZE 256 /* Length of the send buffer */
@@ -78,12 +78,16 @@ OT_TOOL_WEAK void otPlatLog(otLogLevel aLogLevel, otLogRegion aLogRegion, const 
 static void K32WLogOutput(const char *aFormat, va_list ap)
 {
     int len = 0;
-
+    memset(sTxBuffer, 0, TX_BUFFER_SIZE + 1);
     len = vsnprintf(sTxBuffer, TX_BUFFER_SIZE - EOL_CHARS_LEN, aFormat, ap);
     otEXPECT(len >= 0);
     memcpy(sTxBuffer + len, EOL_CHARS, EOL_CHARS_LEN);
     len += EOL_CHARS_LEN;
+#if ((UART_USE_DRIVER_LOG == 1) || (UART_USE_SERIAL_MGR_LOG == 1))
     K32WWriteBlocking((const uint8_t *)sTxBuffer, len);
+#elif (UART_USE_SWO_LOG == 1)
+    PRINTF(sTxBuffer);
+#endif
 
 exit:
     return;

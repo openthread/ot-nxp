@@ -59,8 +59,8 @@ build()
         "$NXP_JN5189_SDK_ROOT"/tools/imagetool/sign_images.sh openthread/examples/apps/cli/
         "$NXP_JN5189_SDK_ROOT"/tools/imagetool/sign_images.sh openthread/examples/apps/ncp/
     else
-        "$NXP_JN5189_SDK_ROOT"/middleware/wireless/openthread/boards/dk6_jn5189/enablement/sign_images.sh openthread/examples/apps/cli/ "$NXP_K32W061_SDK_ROOT"/tools/imagetool
-        "$NXP_JN5189_SDK_ROOT"/middleware/wireless/openthread/boards/dk6_jn5189/enablement/sign_images.sh openthread/examples/apps/ncp/ "$NXP_K32W061_SDK_ROOT"/tools/imagetool
+        "$NXP_JN5189_SDK_ROOT"/middleware/wireless/openthread/boards/dk6_jn5189/enablement/sign_images.sh openthread/examples/apps/cli/ "$NXP_JN5189_SDK_ROOT"/tools/imagetool
+        "$NXP_JN5189_SDK_ROOT"/middleware/wireless/openthread/boards/dk6_jn5189/enablement/sign_images.sh openthread/examples/apps/ncp/ "$NXP_JN5189_SDK_ROOT"/tools/imagetool
     fi
 
     cd "${OT_SRCDIR}"

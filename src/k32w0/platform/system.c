@@ -45,8 +45,17 @@
 otInstance *          sInstance;
 OT_TOOL_WEAK uint32_t gInterruptDisableCount = 0;
 
+void hardware_init(void);
+#ifdef OT_PLAT_SPI_SUPPORT
+extern void BOARD_InitSPI1Pins(void);
+#endif
+
 void otSysInit(int argc, char *argv[])
 {
+#ifdef OT_PLAT_SPI_SUPPORT
+    BOARD_InitSPI1Pins();
+#endif
+#ifdef OT_PLAT_BOARD_INIT
     bool bHwInit = true;
 
     if ((argc == 1) && (!strcmp(argv[0], "app")))
@@ -56,20 +65,18 @@ void otSysInit(int argc, char *argv[])
 
     if (bHwInit)
     {
-        /* Security code to allow debug access */
-        SYSCON->CODESECURITYPROT = 0x87654320;
-
-        BOARD_BootClockRUN();
+        hardware_init();
         BOARD_InitPins();
+
         K32WRandomInit();
         MEM_Init();
     }
+#endif
 
     K32WAlarmInit();
     K32WRadioInit();
 
-#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED) || \
-    (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_NCP_SPINEL)
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
     K32WLogInit();
 #endif
 }
@@ -90,6 +97,9 @@ void otSysProcessDrivers(otInstance *aInstance)
     K32WRadioProcess(aInstance);
     K32WUartProcess();
     K32WAlarmProcess(aInstance);
+#ifdef OT_PLAT_SPI_SUPPORT
+    K32WSpiSlaveProcess();
+#endif
 }
 
 WEAK void otSysEventSignalPending(void)

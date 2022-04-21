@@ -42,8 +42,14 @@
 
 #include <openthread/instance.h>
 
-#define UART_USE_DRIVER 0
-#define UART_USE_SERIAL_MGR 1
+#ifndef CLOCK_32k_source
+/* If not using the external 32kHz crystal, use the internal FRO32k */
+#ifdef gClkUseFro32K
+#define CLOCK_32k_source kCLOCK_Fro32k
+#else
+#define CLOCK_32k_source kCLOCK_Xtal32k
+#endif
+#endif
 
 /**
  * This function initializes the alarm service used by OpenThread.
@@ -105,4 +111,10 @@ void K32WLogInit();
  *
  */
 void K32WWriteBlocking(const uint8_t *aBuf, uint32_t len);
+
+/**
+ * This function performs SPI driver processing.
+ *
+ */
+void K32WSpiSlaveProcess(void);
 #endif // PLATFORM_K32W_H_
