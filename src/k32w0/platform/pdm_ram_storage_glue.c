@@ -44,7 +44,7 @@
 
 #if !ENABLE_STORAGE_DYNAMIC_MEMORY
 #ifndef PDM_BUFFER_SIZE
-#define PDM_BUFFER_SIZE 512
+#define PDM_BUFFER_SIZE (1024 + sizeof(ramBufferDescriptor)) /* kRamBufferInitialSize is 1024 */
 #endif
 static uint8_t sPdmBuffer[PDM_BUFFER_SIZE] __attribute__((aligned(4))) = {0};
 #endif
@@ -138,8 +138,8 @@ ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize)
     ramBufferDescriptor *ramDescr  = (ramBufferDescriptor *)&sPdmBuffer;
     uint16_t             bytesRead = 0;
 
-    assert(initialSize <= PDM_BUFFER_SIZE);
-    ramDescr->ramBufferMaxLen = PDM_BUFFER_SIZE;
+    ramDescr->ramBufferMaxLen = PDM_BUFFER_SIZE - offsetof(ramBufferDescriptor, pRamBuffer);
+    assert(initialSize <= ramDescr->ramBufferMaxLen);
 
     if (PDM_bDoesDataExist(nvmId, &bytesRead))
     {

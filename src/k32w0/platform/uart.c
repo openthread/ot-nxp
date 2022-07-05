@@ -45,6 +45,7 @@
 #include "openthread-system.h"
 #include "platform-k32w.h"
 #include <utils/code_utils.h>
+#include <openthread/platform/time.h>
 #include "utils/uart.h"
 
 /* Defines */
@@ -65,6 +66,9 @@
 #error "Serial Manager or Uart driver cannot be used at the same time with SWO for logging. Please choose just one."
 #endif
 #endif
+
+#define US_PER_MS 1000ULL
+#define FLUSH_TO 500 /* ms*/
 
 #ifndef OT_PLAT_UART_RX_BUFFER_SIZE
 #define OT_PLAT_UART_RX_BUFFER_SIZE 256
@@ -122,6 +126,8 @@ static void       SerialMngr_RxCbApp(void *param);
 OT_TOOL_WEAK void SerialProcess(void);
 #endif
 
+void txDone();
+
 /* Private variables declaration */
 static bool sIsUartInitialized; /* Is UART module initialized? */
 
@@ -135,8 +141,11 @@ static rxRingBuffer   sUartRxRing0;    /* Receive Ring Buffer */
 static usart_handle_t sUartHandleLog; /* Handle to the UART module */
 #endif
 
+volatile bool_t gTxFlush; /* tx flush ongoing */
+
 #if UART_USE_SERIAL_MGR
-uint8_t gShellSerMgrIf;
+uint8_t          gShellSerMgrIf;
+volatile uint8_t gTxCntSerMgrIf; /* pending transmissions */
 
 OT_TOOL_WEAK serialInterfaceType_t ifType = gSerialMgrUsart_c;
 static uint8_t                     sRxBuffer[OT_PLAT_UART_RX_BUFFER_SIZE];
@@ -157,8 +166,10 @@ void K32WUartProcess(void)
         K32WProcessReceive();
 #endif
 
+#if UART_USE_SERIAL_MGR
 #if !USE_SDK_OSA
         SerialProcess();
+#endif
 #endif
     }
 }
@@ -257,8 +268,11 @@ otError otPlatUartSend(const uint8_t *aBuf, uint16_t aBufLength)
 #endif
 
 #if UART_USE_SERIAL_MGR
+    /* new tx */
+    gTxCntSerMgrIf++;
+
     uint8_t status = Serial_AsyncWrite(gShellSerMgrIf, (uint8_t *)aBuf, aBufLength, SerialMngr_TxCbApp, NULL);
-    otEXPECT_ACTION(status == 0, error = OT_ERROR_FAILED);
+    otEXPECT_ACTION(status == 0, gTxCntSerMgrIf--; error = OT_ERROR_FAILED);
 #endif
 
 exit:
@@ -267,7 +281,35 @@ exit:
 
 otError otPlatUartFlush(void)
 {
-    return OT_ERROR_NOT_IMPLEMENTED;
+    if (gTxFlush)
+    {
+        return OT_ERROR_NONE;
+    }
+
+    uint64_t start = otPlatTimeGet();
+
+    gTxFlush = TRUE;
+
+#if UART_USE_DRIVER
+    /* set to NULL in USART0_IRQHandler() */
+    while (sUartHandleApp.txData)
+
+#elif UART_USE_SERIAL_MGR
+    /* decremented in SerialMngr_TxCbApp() */
+    while (gTxCntSerMgrIf)
+#endif
+    {
+        K32WUartProcess();
+
+        if ((otPlatTimeGet() - start) / US_PER_MS > FLUSH_TO)
+        {
+            break;
+        }
+    }
+
+    gTxFlush = FALSE;
+
+    return OT_ERROR_NONE;
 }
 
 #if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
@@ -352,7 +394,7 @@ static void K32WProcessTransmit(void)
     if (sIsTransmitDone)
     {
         sIsTransmitDone = false;
-        otPlatUartSendDone();
+        txDone();
     }
 }
 
@@ -507,7 +549,14 @@ static void K32WResetRxRingBuffer(rxRingBuffer *aRxRing)
 static void SerialMngr_TxCbApp(void *param)
 {
     OT_UNUSED_VARIABLE(param);
-    otPlatUartSendDone();
+
+    /* tx finished */
+    if (gTxCntSerMgrIf)
+    {
+        gTxCntSerMgrIf--;
+    }
+
+    txDone();
 }
 
 static void SerialMngr_RxCbApp(void *param)
@@ -526,6 +575,14 @@ void SerialProcess(void)
 }
 #endif
 #endif /* UART_USE_SERIAL_MGR */
+
+void txDone()
+{
+    if (!gTxFlush)
+    {
+        otPlatUartSendDone();
+    }
+}
 
 /**
  * The UART driver weak functions definition.
