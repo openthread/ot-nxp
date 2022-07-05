@@ -34,15 +34,31 @@
 
 #include "openthread/platform/entropy.h"
 #include "fsl_device_registers.h"
+#include "fsl_os_abstraction.h"
 #include "fsl_rng.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <utils/code_utils.h>
 
+#if defined(USE_RTOS) && (USE_RTOS == 1)
+#define mutex_lock OSA_MutexLock
+#define mutex_unlock OSA_MutexUnlock
+#else
+#define mutex_lock(...)
+#define mutex_unlock(...)
+#endif
+
+static osaMutexId_t trngMutexHandle = NULL;
+
 void K32WRandomInit(void)
 {
     trng_config_t config;
     uint32_t      seed;
+
+#if defined(USE_RTOS) && (USE_RTOS == 1)
+    trngMutexHandle = OSA_MutexCreate();
+    otEXPECT(NULL != trngMutexHandle);
+#endif
 
     TRNG_GetDefaultConfig(&config);
     config.mode = trng_FreeRunning;
@@ -61,10 +77,12 @@ otError otPlatEntropyGet(uint8_t *aOutput, uint16_t aOutputLength)
 {
     otError status = OT_ERROR_NONE;
 
-    otEXPECT_ACTION((aOutput != NULL), status = OT_ERROR_INVALID_ARGS);
+    mutex_lock(trngMutexHandle, osaWaitForever_c);
 
+    otEXPECT_ACTION((aOutput != NULL), status = OT_ERROR_INVALID_ARGS);
     otEXPECT_ACTION(TRNG_GetRandomData(RNG, aOutput, aOutputLength) == kStatus_Success, status = OT_ERROR_FAILED);
 
 exit:
+    mutex_unlock(trngMutexHandle);
     return status;
 }

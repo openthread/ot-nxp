@@ -70,15 +70,16 @@
 /* 32768 ticks = 1s */
 #define US_TO_TICKS32K(x) ((((uint64_t)(x)) << 9) / 15625)
 
-/* Overflow ticks for WTIMER0 to us */
-#define OVF_41bit_US TICKS32kHz_TO_USEC((WTIMER0_MAX_VALUE + 1))
+/* Overflow ticks for WTIMER0_LSB to us */
+#define WTIMER0_LSB_OVF ((uint64_t)1 << 32)
+#define OVF_32bit_US TICKS32kHz_TO_USEC(WTIMER0_LSB_OVF)
 
-/* Every time WTIMER0 overflows (2.1 years) we add OVF_41bit_US */
+/* Every time WTIMER0_LSB overflows (36 hours) we add OVF_32bit_US */
 static uint64_t tstp_ovf;
 
-/* Since WTIMER0 overflows so slow, comparing current timestamp (ticks)
+/* Since WTIMER0_LSB overflows quite slow, comparing current timestamp (ticks)
    with previous timestamp it's a reliable way to detect it */
-static uint64_t prev_tstp;
+static uint32_t prev_tstp;
 
 static bool     sEventFired = false;
 static uint32_t refClk;
@@ -355,12 +356,12 @@ uint32_t otPlatAlarmMicroGetNow(void)
 uint64_t otPlatTimeGet(void)
 {
     /* Make the us timestamp wrap around on 64-bit */
-    uint64_t tstp = Timestamp_GetCounter64bit();
+    uint32_t tstp = Timestamp_GetCounter32bit();
 
     if (prev_tstp > tstp)
     {
-        /* WTIMER0 is a 41-bit counter */
-        tstp_ovf += OVF_41bit_US;
+        /* 32-bit counter */
+        tstp_ovf += OVF_32bit_US;
     }
     prev_tstp = tstp;
 
