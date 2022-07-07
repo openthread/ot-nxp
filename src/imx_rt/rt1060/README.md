@@ -7,8 +7,7 @@ The example platform drivers are intended to present the minimal code necessary
 to support OpenThread. As a result, the example platform drivers do not
 necessarily highlight the platform's full capabilities.
 
-[rt1060]:
-    https://www.nxp.com/products/processors-and-microcontrollers/arm-microcontrollers/i-mx-rt-crossover-mcus/i-mx-rt1060-crossover-mcu-with-arm-cortex-m7-core:i.MX-RT1060
+[rt1060]: https://www.nxp.com/products/processors-and-microcontrollers/arm-microcontrollers/i-mx-rt-crossover-mcus/i-mx-rt1060-crossover-mcu-with-arm-cortex-m7-core:i.MX-RT1060
 
 ## Prerequisites
 
@@ -29,17 +28,16 @@ $ ./script/bootstrap
 
 ## Tools
 
--   Download and install the [MCUXpresso IDE][mcuxpresso ide].
+- Download and install the [MCUXpresso IDE][mcuxpresso ide].
 
-[mcuxpresso ide]:
-    https://www.nxp.com/support/developer-resources/software-development-tools/mcuxpresso-software-and-tools/mcuxpresso-integrated-development-environment-ide:MCUXpresso-IDE
+[mcuxpresso ide]: https://www.nxp.com/support/developer-resources/software-development-tools/mcuxpresso-software-and-tools/mcuxpresso-integrated-development-environment-ide:MCUXpresso-IDE
 
--   Download [IMXRT1060 SDK 2.10.1](https://mcuxpresso.nxp.com/). Creating an
-    nxp.com account is required before being able to download the SDK. Once the
-    account is created, login and follow the steps for downloading
-    SDK_2.10.1_EVK-MIMXRT1060. In the SDK Builder UI selection you should select
-    the **FreeRTOS component**, the **BT/BLE component** and the **ARM GCC
-    Toolchain**.
+- Download [IMXRT1060 SDK 2.10.1](https://mcuxpresso.nxp.com/). Creating an
+  nxp.com account is required before being able to download the SDK. Once the
+  account is created, login and follow the steps for downloading
+  SDK_2.10.1_EVK-MIMXRT1060. In the SDK Builder UI selection you should select
+  the **FreeRTOS component**, the **BT/BLE component** and the **ARM GCC
+  Toolchain**.
 
 ## Building the examples
 
@@ -58,12 +56,12 @@ Note: FreeRTOS is required to be able to build the IMXRT1060 platform files.
 
 Host part:
 
--   1 EVK-MIMXRT1060
+- 1 EVK-MIMXRT1060
 
 Transceiver part:
 
--   1 OM15076-3 Carrier Board (DK6 board)
--   1 K32W061 Module to be plugged on the Carrier Board
+- 1 OM15076-3 Carrier Board (DK6 board)
+- 1 K32W061 Module to be plugged on the Carrier Board
 
 ## Board settings
 
@@ -124,17 +122,17 @@ C:\nxp\DK6ProductionFlashProgrammer>DK6Programmer.exe -s COM29 -p "<ot_rcp_path>
 In order to flash the application for debugging we recommend using
 [MCUXpresso IDE (version >= 11.3.1)](https://www.nxp.com/design/software/development-software/mcuxpresso-software-and-tools-/mcuxpresso-integrated-development-environment-ide:MCUXpresso-IDE?tab=Design_Tools_Tab).
 
--   Import the previously downloaded NXP SDK into MCUXpresso IDE. This can be
-    done by drag-and-dropping the SDK archive into MCUXpresso IDE.
+- Import the previously downloaded NXP SDK into MCUXpresso IDE. This can be
+  done by drag-and-dropping the SDK archive into MCUXpresso IDE.
 
--   Import ot-nxp repo in MCUXpresso IDE as Makefile Project. Use _none_ as
-    _Toolchain for Indexer Settings_:
+- Import ot-nxp repo in MCUXpresso IDE as Makefile Project. Use _none_ as
+  _Toolchain for Indexer Settings_:
 
 ```
 File -> Import -> C/C++ -> Existing Code as Makefile Project
 ```
 
--   Configure MCU Settings:
+- Configure MCU Settings:
 
 ```
 Right click on the Project -> Properties -> C/C++ Build -> MCU Settings -> Select MIMXRT1060 -> Apply & Close
@@ -142,7 +140,7 @@ Right click on the Project -> Properties -> C/C++ Build -> MCU Settings -> Selec
 
 ![MCU_Sett](../../../doc/img/imxrt1060/mcu_settings.JPG)
 
--   Configure the toolchain editor:
+- Configure the toolchain editor:
 
 ```
 Right click on the Project -> C/C++ Build-> Tool Chain Editor -> NXP MCU Tools -> Apply & Close
@@ -150,12 +148,12 @@ Right click on the Project -> C/C++ Build-> Tool Chain Editor -> NXP MCU Tools -
 
 ![MCU_Sett](../../../doc/img/k32w/toolchain.JPG)
 
--   Create a debug configuration:
+- Create a debug configuration:
 
 To create a new debug configuration for our application, we will duplicate an
 existing debug configaturation.
 
--   Create a debug configuration for the hello word projet
+- Create a debug configuration for the hello word projet
 
 1. Click on "Import SDK example(s)..." on the bottom left window of MCUXpresso.
 2. Select the "evkmimxrt1060" SDK, click on "Next"
@@ -167,8 +165,8 @@ existing debug configaturation.
    "MCUXpresso IDE LinkServer" option. Doing this will flash the application on
    the board. Then click on the red "Terminate" button.
 
--   Duplicate the hello word debug configaturation to create a new debug
-    configuration for the ot_cli
+- Duplicate the hello word debug configaturation to create a new debug
+  configuration for the ot_cli
 
 1. Right click on the "Hello Word" project, select "Debug As" and then select
    "Debug Configurations".
@@ -190,16 +188,15 @@ existing debug configaturation.
    terminal emulator like PuTTY and connect to the used COM port with the
    following UART settings (on the IMXRT1060):
 
-    - Baud rate: 115200
-    - 8 data bits
-    - 1 stop bit
-    - No parity
-    - No flow control
+   - Baud rate: 115200
+   - 8 data bits
+   - 1 stop bit
+   - No parity
+   - No flow control
 
 2. Follow the process describe in [Interact with the OT CLI][validate_port].
 
-[validate_port]:
-    https://openthread.io/guides/porting/validate-the-port#interact-with-the-cli
+[validate_port]: https://openthread.io/guides/porting/validate-the-port#interact-with-the-cli
 
 For a list of all available commands, visit [OpenThread CLI Reference
 README.md][cli].

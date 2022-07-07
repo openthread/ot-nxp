@@ -1,9 +1,7 @@
 [![Build][ot-gh-action-build-svg]][ot-gh-action-build]
 
-[ot-gh-action-build]:
-    https://github.com/openthread/ot-nxp/actions?query=workflow%3ABuild+branch%3Amain+event%3Apush
-[ot-gh-action-build-svg]:
-    https://github.com/openthread/ot-nxp/workflows/Build/badge.svg?branch=main&event=push
+[ot-gh-action-build]: https://github.com/openthread/ot-nxp/actions?query=workflow%3ABuild+branch%3Amain+event%3Apush
+[ot-gh-action-build-svg]: https://github.com/openthread/ot-nxp/workflows/Build/badge.svg?branch=main&event=push
 
 ---
 
@@ -12,18 +10,15 @@
 This repo contains example platform drivers for [NXP K32W061 SoC][k32w061], [NXP
 JN5189 SoC][jn5189] and [NXP RT 1060 Crossover MCU][rt1060].
 
-[k32w061]:
-    https://www.nxp.com/products/wireless/thread/k32w061-41-high-performance-secure-and-ultra-low-power-mcu-for-zigbeethread-and-bluetooth-le-5-0-with-built-in-nfc-option:K32W061_41
-[jn5189]:
-    https://www.nxp.com/products/wireless/thread/jn5189-88-t-high-performance-and-ultra-low-power-mcus-for-zigbee-and-thread-with-built-in-nfc-option:JN5189_88_T
-[rt1060]:
-    https://www.nxp.com/products/processors-and-microcontrollers/arm-microcontrollers/i-mx-rt-crossover-mcus/i-mx-rt1060-crossover-mcu-with-arm-cortex-m7-core:i.MX-RT1060
+[k32w061]: https://www.nxp.com/products/wireless/thread/k32w061-41-high-performance-secure-and-ultra-low-power-mcu-for-zigbeethread-and-bluetooth-le-5-0-with-built-in-nfc-option:K32W061_41
+[jn5189]: https://www.nxp.com/products/wireless/thread/jn5189-88-t-high-performance-and-ultra-low-power-mcus-for-zigbee-and-thread-with-built-in-nfc-option:JN5189_88_T
+[rt1060]: https://www.nxp.com/products/processors-and-microcontrollers/arm-microcontrollers/i-mx-rt-crossover-mcus/i-mx-rt1060-crossover-mcu-with-arm-cortex-m7-core:i.MX-RT1060
 
 To learn more about building and running the examples please check:
 
--   [OpenThread on NXP K32W061 examples][k32w061-page]
--   [OpenThread on NXP JN5189 examples][jn5189-page]
--   [OpenThread on RT1060 examples][rt1060-page]
+- [OpenThread on NXP K32W061 examples][k32w061-page]
+- [OpenThread on NXP JN5189 examples][jn5189-page]
+- [OpenThread on RT1060 examples][rt1060-page]
 
 [k32w061-page]: src/k32w0/k32w061/README.md
 [jn5189-page]: src/k32w0/jn5189/README.md
@@ -56,9 +51,9 @@ endorsed by or otherwise affiliated with Nest, Google, or The Thread Group.
 
 OpenThread support is available on GitHub:
 
--   Bugs and feature requests pertaining to the OpenThread on NXP platforms —
-    [submit to the openthread/ot-nxp Issue Tracker](https://github.com/openthread/ot-nxp/issues)
--   OpenThread bugs and feature requests —
-    [submit to the OpenThread Issue Tracker](https://github.com/openthread/openthread/issues)
--   Community Discussion -
-    [ask questions, share ideas, and engage with other community members](https://github.com/openthread/openthread/discussions)
+- Bugs and feature requests pertaining to the OpenThread on NXP platforms —
+  [submit to the openthread/ot-nxp Issue Tracker](https://github.com/openthread/ot-nxp/issues)
+- OpenThread bugs and feature requests —
+  [submit to the OpenThread Issue Tracker](https://github.com/openthread/openthread/issues)
+- Community Discussion -
+  [ask questions, share ideas, and engage with other community members](https://github.com/openthread/openthread/discussions)

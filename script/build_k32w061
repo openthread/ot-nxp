@@ -64,9 +64,9 @@ readonly OT_OPTIONS_NO_RCP=(
 sign()
 {
     if [ "$SDK_RELEASE" == "ON" ]; then
-        "$NXP_K32W0_SDK_ROOT"/tools/imagetool/sign_images.sh $1
+        "$NXP_K32W0_SDK_ROOT"/tools/imagetool/sign_images.sh "$1"
     else
-        "$NXP_K32W0_SDK_ROOT"/middleware/wireless/openthread/boards/dk6_jn5189/enablement/sign_images.sh $1 "$NXP_K32W0_SDK_ROOT"/tools/imagetool
+        "$NXP_K32W0_SDK_ROOT"/middleware/wireless/openthread/boards/dk6_jn5189/enablement/sign_images.sh "$1" "$NXP_K32W0_SDK_ROOT"/tools/imagetool
     fi
 }
 
@@ -78,8 +78,8 @@ build()
     if [ ! "$1" = "folder_not_specified" ]; then
         cmakeArgs=("${@:2}")
         rcp_folder_name="$1"
-        mkdir -p ${rcp_folder_name}
-        cd ${rcp_folder_name}
+        mkdir -p "${rcp_folder_name}"
+        cd "${rcp_folder_name}"
     fi
 
     # shellcheck disable=SC2068
@@ -202,7 +202,7 @@ main()
     if [ $# == 0 ]; then
         create_directory_and_build all $SDK_RELEASE "$@"
     else
-        create_directory_and_build $1 $SDK_RELEASE "$@"
+        create_directory_and_build "$1" $SDK_RELEASE "$@"
     fi
 
 }

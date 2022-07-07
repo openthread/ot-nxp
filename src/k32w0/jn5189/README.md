@@ -7,10 +7,8 @@ The example platform drivers are intended to present the minimal code necessary
 to support OpenThread. As a result, the example platform drivers do not
 necessarily highlight the platform's full capabilities.
 
-[jn5189]:
-    https://www.nxp.com/products/wireless/thread/jn5189-88-t-high-performance-and-ultra-low-power-mcus-for-zigbee-and-thread-with-built-in-nfc-option:JN5189_88_T
-[jn5189-dk006]:
-    https://www.nxp.com/document/guide/getting-started-with-jn5189:GS-JN5189
+[jn5189]: https://www.nxp.com/products/wireless/thread/jn5189-88-t-high-performance-and-ultra-low-power-mcus-for-zigbee-and-thread-with-built-in-nfc-option:JN5189_88_T
+[jn5189-dk006]: https://www.nxp.com/document/guide/getting-started-with-jn5189:GS-JN5189
 
 ## Prerequisites
 
@@ -39,17 +37,16 @@ $ pip3 install pycryptodome
 
 ## Tools
 
--   Download and install the [MCUXpresso IDE][mcuxpresso ide].
+- Download and install the [MCUXpresso IDE][mcuxpresso ide].
 
-[mcuxpresso ide]:
-    https://www.nxp.com/support/developer-resources/software-development-tools/mcuxpresso-software-and-tools/mcuxpresso-integrated-development-environment-ide:MCUXpresso-IDE
+[mcuxpresso ide]: https://www.nxp.com/support/developer-resources/software-development-tools/mcuxpresso-software-and-tools/mcuxpresso-integrated-development-environment-ide:MCUXpresso-IDE
 
--   Download [JN5189 SDK 2.6.3](https://mcuxpresso.nxp.com/). Creating an
-    nxp.com account is required before being able to download the SDK. Once the
-    account is created, login and follow the steps for downloading
-    SDK_2.6.3_JN5189DK6. The SDK Builder UI selection should be similar with the
-    one from the image below.
-    ![MCUXpresso SDK Download](../../../doc/img/k32w/sdk_builder_jn5189.JPG)
+- Download [JN5189 SDK 2.6.3](https://mcuxpresso.nxp.com/). Creating an
+  nxp.com account is required before being able to download the SDK. Once the
+  account is created, login and follow the steps for downloading
+  SDK_2.6.3_JN5189DK6. The SDK Builder UI selection should be similar with the
+  one from the image below.
+  ![MCUXpresso SDK Download](../../../doc/img/k32w/sdk_builder_jn5189.JPG)
 
 ## Building the examples
 
@@ -107,20 +104,20 @@ position (_LPC-JN UART0_).
 In order to flash the application for debugging we recommend using
 [MCUXpresso IDE (version >= 11.0.0)](https://www.nxp.com/design/software/development-software/mcuxpresso-software-and-tools-/mcuxpresso-integrated-development-environment-ide:MCUXpresso-IDE?tab=Design_Tools_Tab).
 
--   Import the previously downloaded NXP SDK into MCUXpresso IDE. This can be
-    done by drag-and-dropping the SDK archive into MCUXpresso IDE's _Installed
-    SDKs_ tab:
+- Import the previously downloaded NXP SDK into MCUXpresso IDE. This can be
+  done by drag-and-dropping the SDK archive into MCUXpresso IDE's _Installed
+  SDKs_ tab:
 
 ![Installed_SDKS](../../../doc/img/k32w/installed_sdks.JPG)
 
--   Import OpenThread repo in MCUXpresso IDE as Makefile Project. Use _none_ as
-    _Toolchain for Indexer Settings_:
+- Import OpenThread repo in MCUXpresso IDE as Makefile Project. Use _none_ as
+  _Toolchain for Indexer Settings_:
 
 ```
 File -> Import -> C/C++ -> Existing Code as Makefile Project
 ```
 
--   Configure MCU Settings:
+- Configure MCU Settings:
 
 ```
 Right click on the Project -> Properties -> C/C++ Build -> MCU Settings -> Select JN5189 -> Apply & Close
@@ -128,7 +125,7 @@ Right click on the Project -> Properties -> C/C++ Build -> MCU Settings -> Selec
 
 ![MCU_Sett](../../../doc/img/k32w/mcu_settings.JPG)
 
--   Configure the toolchain editor:
+- Configure the toolchain editor:
 
 ```
 Right click on the Project -> C/C++ Build-> Tool Chain Editor -> NXP MCU Tools -> Apply & Close
@@ -136,7 +133,7 @@ Right click on the Project -> C/C++ Build-> Tool Chain Editor -> NXP MCU Tools -
 
 ![MCU_Sett](../../../doc/img/k32w/toolchain.JPG)
 
--   Create a debug configuration:
+- Create a debug configuration:
 
 ```
 Right click on the Project -> Debug -> As->MCUXpresso IDE LinkServer (inc. CMSIS-DAP) probes -> OK -> Select elf file
@@ -144,8 +141,8 @@ Right click on the Project -> Debug -> As->MCUXpresso IDE LinkServer (inc. CMSIS
 
 ![debug_1](../../../doc/img/k32w/debug_conf1.JPG)
 
--   Set the _Connect script_ for the debug configuration to _QN9090connect.scp_
-    from the dropdown list:
+- Set the _Connect script_ for the debug configuration to _QN9090connect.scp_
+  from the dropdown list:
 
 ```
 Right click on the Project -> Debug As -> Debug configurations... -> LinkServer Debugger
@@ -153,7 +150,7 @@ Right click on the Project -> Debug As -> Debug configurations... -> LinkServer 
 
 ![connect](../../../doc/img/k32w/gdbdebugger.JPG)
 
--   Set the _Initialization Commands_ to:
+- Set the _Initialization Commands_ to:
 
 ```
 Right click on the Project -> Debug As -> Debug configurations... -> Startup
@@ -171,7 +168,7 @@ ${load}
 
 ![init](../../../doc/img/k32w/startup.JPG)
 
--   Set the _vector.catch_ value to _false_ inside the .launch file:
+- Set the _vector.catch_ value to _false_ inside the .launch file:
 
 ```
 Right click on the Project -> Utilities -> Open Directory Browser here -> edit *.launch file:
@@ -180,7 +177,7 @@ Right click on the Project -> Utilities -> Open Directory Browser here -> edit *
 
 ```
 
--   Debug using the newly created configuration file:
+- Debug using the newly created configuration file:
 
 ![debug](../../../doc/img/k32w/debug_start.JPG)
 
@@ -195,11 +192,11 @@ Right click on the Project -> Utilities -> Open Directory Browser here -> edit *
    terminal emulator like PuTTY and connect to the used COM port with the
    following UART settings:
 
-    - Baud rate: 115200
-    - 8 data bits
-    - 1 stop bit
-    - No parity
-    - No flow control
+   - Baud rate: 115200
+   - 8 data bits
+   - 1 stop bit
+   - No parity
+   - No flow control
 
 3. Open a terminal connection on the first board and start a new Thread network.
 
