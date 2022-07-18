@@ -41,7 +41,7 @@ main()
     "$(dirname "$0")"/build_k32w061
 
     rm -rf "$OT_BUILDDIR_JN5189"
-    "$(dirname "$0")"/build_jn5189
+    #"$(dirname "$0")"/build_jn5189
 
     rm -rf "$OT_BUILDDIR_RT1060"
     "$(dirname "$0")"/build_rt1060

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2020, The OpenThread Authors.
+ *  Copyright (c) 2022, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -26,75 +26,34 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef K32W061_SDK_CONFIG_H
-#define K32W061_SDK_CONFIG_H
+/**
+ * @file pdm_ram_storage_glue.h
+ * Interface for the glue between PDM and RAM Buffer
+ *
+ */
 
-#include "openthread-core-k32w061-config.h"
+#ifndef PDM_RAM_STORAGE_GLUE_H_
+#define PDM_RAM_STORAGE_GLUE_H_
 
-#ifdef APP_PRE_INCLUDE
-#include APP_PRE_INCLUDE
+#include "ram_storage.h"
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#ifndef gUsePdm_d
-#define gUsePdm_d 1
+#if ENABLE_STORAGE_DYNAMIC_MEMORY
+/* pBuffer will be resized (if needed) in case it can't accomodate a new record */
+rsError ramStorageResize(ramBufferDescriptor **pBuffer, uint16_t aKey, const uint8_t *aValue, uint16_t aValueLength);
 #endif
 
-#ifndef gPdmMemPoolId_c
-#define gPdmMemPoolId_c 0
+/* Return a RAM buffer with initialSize and populated with the contents of NVM ID - if found in flash
+ * Main use case is for dynamic memory allocation
+ * In case static memory allocation is used, initialSize is unused
+ */
+ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize);
+
+#ifdef __cplusplus
+}
 #endif
 
-#ifndef gPdmNbSegments
-#define gPdmNbSegments 63 /* number of sectors contained in PDM storage */
-#endif
-
-#ifndef USE_RTOS
-#define USE_RTOS 0
-#endif
-
-#ifndef USE_SDK_OSA
-#define USE_SDK_OSA 0
-#endif
-
-#ifndef gSerialManagerMaxInterfaces_c
-#define gSerialManagerMaxInterfaces_c 2
-#endif
-
-#ifndef SUPPORT_FOR_15_4
-#define SUPPORT_FOR_15_4 1
-#endif
-
-#define UART_USE_DRIVER 0
-#define UART_USE_SERIAL_MGR 1
-#define UART_USE_DRIVER_LOG 0
-#define UART_USE_SERIAL_MGR_LOG 1
-#define UART_USE_SWO_LOG 0
-
-#ifndef SDK_DEBUGCONSOLE
-#if ((OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED) && (UART_USE_SWO_LOG == 1))
-#define SDK_DEBUGCONSOLE DEBUGCONSOLE_REDIRECT_TO_SDK
-#else
-#define SDK_DEBUGCONSOLE DEBUGCONSOLE_DISABLE
-#endif
-#endif
-
-#if (UART_USE_SWO_LOG == 1)
-#define SERIAL_PORT_TYPE_SWO 1
-#define SERIAL_PORT_TYPE_UART 0
-#endif
-
-/* Control coexistence module */
-#ifndef gMWS_UseCoexistence_d
-#define gMWS_UseCoexistence_d 0
-#endif
-
-#ifndef gUartDebugConsole_d
-#define gUartDebugConsole_d 0
-#endif
-
-#ifndef PoolsDetails_c
-#define PoolsDetails_c                                 \
-    _block_size_ 512 _number_of_blocks_ 2 _pool_id_(0) \
-        padding _eol_ _block_size_ 768 _number_of_blocks_ 1 _pool_id_(0) padding _eol_
-#endif
-
-#endif // K32W061_SDK_CONFIG_H
+#endif /* PDM_RAM_STORAGE_GLUE_H_ */

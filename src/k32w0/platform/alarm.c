@@ -41,9 +41,12 @@
 #include "fsl_os_abstraction.h"
 #include "fsl_wtimer.h"
 #include "openthread-system.h"
+#include "platform-k32w.h"
 #include <common/logging.hpp>
+#include <openthread/platform/alarm-micro.h>
 #include <openthread/platform/alarm-milli.h>
 #include <openthread/platform/diag.h>
+#include <openthread/platform/time.h>
 
 #ifdef ALARM_LOG_ENABLED
 #include "dbg_logging.h"
@@ -61,7 +64,21 @@
 
 /* Timer frequency in Hz needed for 1ms tick */
 #define TARGET_FREQ 1000U
-#define MAX_TIMESTAMP_VALUE_MS 0x7CFFFFF
+
+#define US_PER_MS 1000ULL
+
+/* 32768 ticks = 1s */
+#define US_TO_TICKS32K(x) ((((uint64_t)(x)) << 9) / 15625)
+
+/* Overflow ticks for WTIMER0 to us */
+#define OVF_41bit_US TICKS32kHz_TO_USEC((WTIMER0_MAX_VALUE + 1))
+
+/* Every time WTIMER0 overflows (2.1 years) we add OVF_41bit_US */
+static uint64_t tstp_ovf;
+
+/* Since WTIMER0 overflows so slow, comparing current timestamp (ticks)
+   with previous timestamp it's a reliable way to detect it */
+static uint64_t prev_tstp;
 
 static bool     sEventFired = false;
 static uint32_t refClk;
@@ -77,8 +94,11 @@ static ctimer_match_config_t sMatchConfig = {.enableCounterReset = false,
 #else
 static TMR_tsActivityWakeTimerEvent otTimer;
 static void                         TMR_ScheduleActivityCallback(void);
-static uint32_t                     sAcumulatedTimestamp = 0;
-static uint32_t                     sLastTimestamp       = 0;
+
+#if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
+static bool                         sMicroEventFired = false;
+static TMR_tsActivityWakeTimerEvent otMicroTimer;
+#endif
 #endif
 
 /* Stub function for notifying application of wakeup */
@@ -111,12 +131,16 @@ void K32WAlarmInit(void)
 
 #else
 
-    /* Handles WTIMER init inside, Wake timer 0 is 41 bits long and is used for keepig the timestamp */
+    /* Handles WTIMER init inside, Wake timer 0 is 41-bit counter and is used for keeping the timestamp */
     Timestamp_Init();
 
     /* Get clk frequency and use prescale to lower it */
-    refClk           = CLOCK_GetFreq(kCLOCK_Xtal32k);
-    otTimer.u8Status = TMR_E_ACTIVITY_FREE;
+    refClk                = CLOCK_GetFreq(CLOCK_32k_source);
+    otTimer.u8Status      = TMR_E_ACTIVITY_FREE;
+
+#if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
+    otMicroTimer.u8Status = TMR_E_ACTIVITY_FREE;
+#endif
 #endif
 }
 
@@ -130,16 +154,34 @@ void K32WAlarmClean(void)
 #else
     Timestamp_Deinit();
     TMR_eRemoveActivity(&otTimer);
+
+#if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
+    TMR_eRemoveActivity(&otMicroTimer);
+#endif
 #endif
 }
 
 void K32WAlarmProcess(otInstance *aInstance)
 {
+    bool ev1;
+#if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
+    bool ev2;
+#endif
+
     OSA_InterruptDisable();
-    if (sEventFired)
+
+    ev1         = sEventFired;
+    sEventFired = false;
+
+#if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
+    ev2              = sMicroEventFired;
+    sMicroEventFired = false;
+#endif
+
+    OSA_InterruptEnable();
+
+    if (ev1)
     {
-        sEventFired = false;
-        OSA_InterruptEnable();
 #if OPENTHREAD_ENABLE_DIAG
 
         if (otPlatDiagModeGet())
@@ -152,11 +194,72 @@ void K32WAlarmProcess(otInstance *aInstance)
             otPlatAlarmMilliFired(aInstance);
         }
     }
+
+#if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
+    if (ev2)
+    {
+        otPlatAlarmMicroFired(aInstance);
+    }
+#endif
+}
+
+#if !ALARM_USE_CTIMER
+void alarmStartAt(TMR_tsActivityWakeTimerEvent *t, void (*cb)(void), bool *ev, uint32_t t0, uint32_t dt, bool ms)
+{
+    uint32_t targetTicks = 0;
+    uint32_t now         = 0;
+    uint32_t t1          = t0 + dt;
+
+    if (ms)
+    {
+        now = otPlatAlarmMilliGetNow();
+    }
     else
     {
-        OSA_InterruptEnable();
+        now = otPlatAlarmMicroGetNow();
+    }
+    otLogInfoPlat("Start timer: timestamp:%d, aTo:%d, aDt:%d", now, t0, dt);
+
+    /* Check 'now' position in range [t0, t1] */
+    if ((now - t0 <= dt) && (t1 - now <= dt))
+    {
+        /* inside the range: t1 is in the future */
+        targetTicks = t1 - now;
+    }
+    else if ((now - t1) > (t0 - now))
+    {
+        /* on the left: both t0 and t1 are in the future */
+        targetTicks = t1 - now;
+    }
+
+    if (ms)
+    {
+        targetTicks = (uint32_t)MILLISECONDS_TO_TICKS32K(targetTicks);
+    }
+    else
+    {
+        targetTicks = (uint32_t)US_TO_TICKS32K(targetTicks);
+    }
+
+    if (targetTicks > 0)
+    {
+        TMR_eRemoveActivity(t);
+        if (targetTicks > WTIMER1_MAX_VALUE)
+        {
+            /* Because timer 1 is only 28-bit counter we need to take into account and event longer than this
+            so we arm the timer with the maximum value and re-arm with the remaining time once it fires */
+            targetTicks = WTIMER1_MAX_VALUE;
+        }
+        TMR_eScheduleActivity32kTicks(t, targetTicks, cb);
+    }
+    else
+    {
+        *ev = true;
+        otSysEventSignalPending();
+        App_NotifyWakeup();
     }
 }
+#endif
 
 void otPlatAlarmMilliStartAt(otInstance *aInstance, uint32_t aT0, uint32_t aDt)
 {
@@ -168,45 +271,7 @@ void otPlatAlarmMilliStartAt(otInstance *aInstance, uint32_t aT0, uint32_t aDt)
 
     CTIMER_SetupMatch(CTIMER0, kCTIMER_Match_0, &sMatchConfig);
 #else
-    uint64_t targetTicks = 0;
-
-    /* Calculate the difference between now and the requested timestamp aT0 - this time will be
-       substracted from the total time until the event needs to fire */
-    uint32_t timestamp = otPlatAlarmMilliGetNow();
-
-    otLogInfoPlat("Start timer: timestamp:%d, aTo:%d, aDt:%d", timestamp, aT0, aDt);
-    if (timestamp >= aT0)
-    {
-        timestamp = timestamp - aT0;
-    }
-    else
-    {
-        timestamp = (~0UL) - aT0 + timestamp + 1;
-    }
-
-    if (aDt > timestamp)
-    {
-        targetTicks = MILLISECONDS_TO_TICKS32K((aDt - timestamp));
-    }
-
-    if (targetTicks > 0)
-    {
-        TMR_eRemoveActivity(&otTimer);
-        if (targetTicks > WTIMER1_MAX_VALUE)
-        {
-            /* Because timer 1 is only 28 bits long we need to take into account and event longer than this
-            so we arm the timer with the maximum value and re-arm with the remaing time once it fires */
-            targetTicks = WTIMER1_MAX_VALUE;
-        }
-        TMR_eScheduleActivity32kTicks(&otTimer, targetTicks, TMR_ScheduleActivityCallback);
-    }
-    else
-    {
-        sEventFired = true;
-        otSysEventSignalPending();
-        App_NotifyWakeup();
-    }
-
+    alarmStartAt(&otTimer, TMR_ScheduleActivityCallback, &sEventFired, aT0, aDt, true);
 #endif
 }
 
@@ -230,19 +295,7 @@ uint32_t otPlatAlarmMilliGetNow(void)
     return CTIMER0->TC;
 #else
 
-    uint64_t tiks = Timestamp_GetCounter32bit();
-
-    tiks *= TARGET_FREQ;
-    tiks /= refClk;
-    uint32_t retTimestamp = (uint32_t)tiks;
-
-    if (sLastTimestamp > retTimestamp)
-    {
-        sAcumulatedTimestamp += MAX_TIMESTAMP_VALUE_MS;
-    }
-    sLastTimestamp = retTimestamp;
-
-    return retTimestamp + sAcumulatedTimestamp;
+    return (uint32_t)(otPlatTimeGet() / US_PER_MS);
 #endif
 }
 
@@ -268,3 +321,48 @@ static void TMR_ScheduleActivityCallback(void)
     otSysEventSignalPending();
 }
 #endif
+
+#if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
+void MicroTimerCallback(void)
+{
+    ALARM_LOG("");
+    sMicroEventFired = true;
+    App_NotifyWakeup();
+    otSysEventSignalPending();
+}
+
+void otPlatAlarmMicroStartAt(otInstance *aInstance, uint32_t aT0, uint32_t aDt)
+{
+    OT_UNUSED_VARIABLE(aInstance);
+
+    alarmStartAt(&otMicroTimer, MicroTimerCallback, &sMicroEventFired, aT0, aDt, false);
+}
+
+void otPlatAlarmMicroStop(otInstance *aInstance)
+{
+    OT_UNUSED_VARIABLE(aInstance);
+
+    sMicroEventFired = false;
+    TMR_eRemoveActivity(&otMicroTimer);
+}
+
+uint32_t otPlatAlarmMicroGetNow(void)
+{
+    return (uint32_t)otPlatTimeGet();
+}
+#endif
+
+uint64_t otPlatTimeGet(void)
+{
+    /* Make the us timestamp wrap around on 64-bit */
+    uint64_t tstp = Timestamp_GetCounter64bit();
+
+    if (prev_tstp > tstp)
+    {
+        /* WTIMER0 is a 41-bit counter */
+        tstp_ovf += OVF_41bit_US;
+    }
+    prev_tstp = tstp;
+
+    return TICKS32kHz_TO_USEC(tstp) + tstp_ovf;
+}

@@ -25,11 +25,6 @@
 #  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 #  POSSIBILITY OF SUCH DAMAGE.
 #
-list(APPEND OT_PLATFORM_DEFINES
-    "OPENTHREAD_CORE_CONFIG_PLATFORM_CHECK_FILE=\"openthread-core-jn5189-config-check.h\""
-)
-
-set(OT_PLATFORM_DEFINES ${OT_PLATFORM_DEFINES} PARENT_SCOPE)
 
 target_compile_definitions(ot-config INTERFACE
     "MBEDTLS_USER_CONFIG_FILE=\"jn5189-mbedtls-config.h\""
@@ -37,17 +32,6 @@ target_compile_definitions(ot-config INTERFACE
 )
 
 set(OT_PUBLIC_INCLUDES ${OT_PUBLIC_INCLUDES} PARENT_SCOPE)
-
-set(COMM_FLAGS
-    -I${PROJECT_SOURCE_DIR}/examples/platforms/k32w0/jn5189/
-)
-if(OT_CFLAGS MATCHES "-pedantic-errors")
-    string(REPLACE "-pedantic-errors" "" OT_CFLAGS "${OT_CFLAGS}")
-endif()
-
-if(OT_CFLAGS MATCHES "-Wcast-align")
-    string(REPLACE "-Wcast-align" "" OT_CFLAGS "${OT_CFLAGS}")
-endif()
 
 add_library(openthread-jn5189
     ${K32W0_COMM_SOURCES}
@@ -62,14 +46,29 @@ set_target_properties(openthread-jn5189
 
 target_link_libraries(openthread-jn5189
     PUBLIC
-        ${OT_MBEDTLS}                         
-        ${K32W0_LIBS}
-        -T${PROJECT_SOURCE_DIR}/src/k32w0/jn5189/jn5189.ld
+        -Wl,--start-group nxp-jn5189-driver mbedtls -Wl,--end-group
         -Wl,--gc-sections
-        -Wl,-Map=$<TARGET_PROPERTY:NAME>.map
+        -Wl,-Map=$<TARGET_PROPERTY:NAME>.map,-print-memory-usage
     PRIVATE
-        nxp-jn5189-driver
         ot-config
+)
+
+if (OT_APP_CLI OR OT_APP_RCP OR OT_APP_NCP)
+    target_link_libraries(openthread-jn5189
+        PUBLIC
+            -T${PROJECT_SOURCE_DIR}/src/k32w0/jn5189/jn5189.ld
+    )
+    target_compile_definitions(openthread-jn5189
+        PRIVATE
+            #For openthread stack application board initialization is done in the ot platform layer
+            OT_PLAT_BOARD_INIT
+    )
+endif ()
+
+#Openthread libs need to have openthread platform dependencies
+target_link_libraries(ot-config
+    INTERFACE
+        openthread-jn5189
 )
 
 target_compile_definitions(openthread-jn5189
@@ -77,18 +76,12 @@ target_compile_definitions(openthread-jn5189
         ${OT_PLATFORM_DEFINES}
 )
 
-target_compile_options(openthread-jn5189
-    PUBLIC
-        ${OT_CFLAGS}
-        ${COMM_FLAGS}
-)
-
 target_include_directories(openthread-jn5189
-    PRIVATE
+    PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/jn5189
+    PRIVATE
         ${K32W0_INCLUDES}
         ${OT_PUBLIC_INCLUDES}
 )
 
 target_include_directories(ot-config INTERFACE ${OT_PUBLIC_INCLUDES})
-target_compile_definitions(ot-config INTERFACE ${OT_PLATFORM_DEFINES})

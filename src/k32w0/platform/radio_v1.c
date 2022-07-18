@@ -45,15 +45,10 @@
 
 /* Openthread general */
 #include "openthread-system.h"
-
 #include <utils/code_utils.h>
-#include <utils/mac_frame.h>
-#include "utils/link_metrics.h"
-
 #include <openthread/platform/alarm-milli.h>
 #include <openthread/platform/diag.h>
 #include <openthread/platform/radio.h>
-#include <openthread/platform/time.h>
 
 #if defined RADIO_LOG_ENABLED
 #include "dbg_logging.h"
@@ -66,14 +61,15 @@
 #define RADIO_LOG(...)
 #endif
 
-#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+#if defined(gMWS_UseCoexistence_d) && (gMWS_UseCoexistence_d)
 #include "MWS.h"
 #include "MacDynamic.h"
 #endif
+
 extern void BOARD_LedDongleToggle(void);
 extern void OSA_InterruptEnable(void);
 extern void OSA_InterruptDisable(void);
-#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+#if defined(gMWS_UseCoexistence_d) && (gMWS_UseCoexistence_d)
 extern void BOARD_GetCoexIoCfg(void **rfDeny, void **rfActive, void **rfStatus);
 #endif
 
@@ -101,8 +97,7 @@ extern void BOARD_GetCoexIoCfg(void **rfDeny, void **rfActive, void **rfStatus);
 #define MAC_TX_CSMA_MIN_BE (3)
 #define MAC_TX_CSMA_MAX_BE (5)
 #define MAC_TX_CSMA_MAX_BACKOFFS (4)
-
-#define CSL_UNCERT 32 ///< The Uncertainty of the scheduling CSL of transmission by the parent, in ±10 us units.
+#define MAC_MAX_TX_RETRIES (15)
 
 /* Structures */
 typedef struct
@@ -113,32 +108,31 @@ typedef struct
 
 typedef struct
 {
-    otExtAddress extAddr;
-    uint16_t     panId;
+    uint32_t u32L;
+    uint32_t u32H;
+} extMacAddr;
+
+typedef struct
+{
+    extMacAddr extAddr;
+    uint16_t   panId;
 } fpNeighExtAddr;
 
 typedef struct
 {
-    tsPhyFrame   f;
-    otRadioFrame of;
-} rxRingBufferEntry;
-
-typedef struct
-{
-    rxRingBufferEntry *buffer[K32W_RX_BUFFERS];
-    uint8_t            head;
-    uint8_t            tail;
-    bool               isFull;
+    tsRxFrameFormat *buffer[K32W_RX_BUFFERS];
+    uint8_t          head;
+    uint8_t          tail;
+    bool             isFull;
 } rxRingBuffer;
 
 typedef enum
 {
-    kFcsSize             = sizeof(uint16_t),
+    kFcfSize             = sizeof(uint16_t),
     kDsnSize             = sizeof(uint8_t),
     kSecurityControlSize = sizeof(uint8_t),
     kFrameCounterSize    = sizeof(uint32_t),
     kKeyIndexSize        = sizeof(uint8_t),
-    kMicSize             = sizeof(uint32_t),
 
     kMacFcfLowOffset = 0, /* Offset of FCF first byte inside Mac Hdr */
     kMacFrameDataReq = 4,
@@ -183,33 +177,24 @@ typedef enum
 } frameConversionType;
 
 /* Private functions declaration */
-static void K32WGetRxFrameInfo(rxRingBufferEntry *rbe);
-static void K32WISR(uint32_t u32IntBitmap);
-static void K32WProcessMacHeader(tsPhyFrame *aRxFrame);
 
-static void K32WProcessRxFrames(otInstance *aInstance);
-static void K32WProcessTxFrame(otInstance *aInstance);
-
-static bool K32WCheckIfFpRequired(tsPhyFrame *aRxFrame);
-
-static void K32WFrameConversion(tsPhyFrame *aPhyFrame, otRadioFrame *aOtFrame);
-
-static void               K32WResetRxRingBuffer(rxRingBuffer *aRxRing);
-static void               K32WPushRxRingBuffer(rxRingBuffer *aRxRing, rxRingBufferEntry *rbe);
-static rxRingBufferEntry *K32WPopRxRingBuffer(rxRingBuffer *aRxRing);
-static bool               K32WIsEmptyRxRingBuffer(rxRingBuffer *aRxRing);
-
-static tsPhyFrame *K32WGetFrame(rxRingBufferEntry *aRxFrame, uint8_t *aRxFrameIndex);
-static void        K32WEnableReceive(bool_t isNewFrameNeeded);
-
-#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
-static void K32WEncFrame(void *t, const void *key);
-
-#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_SUBJECT_ENABLE
-static uint8_t K32WGetVsIeLen(void *t);
-static void    K32WGetVsIeGen(void *t, uint8_t *b);
-#endif
-#endif
+static void             K32WISR(uint32_t u32IntBitmap);
+static void             K32WProcessMacHeader(tsRxFrameFormat *aRxFrame);
+static void             K32WProcessRxFrames(otInstance *aInstance);
+static void             K32WProcessTxFrame(otInstance *aInstance);
+static bool             K32WCheckIfFpRequired(tsRxFrameFormat *aRxFrame);
+static bool_t           K32WIsDataReq(tsRxFrameFormat *aRxFrame);
+static otError          K32WFrameConversion(tsRxFrameFormat *   aMacFormatFrame,
+                                            otRadioFrame *      aOtFrame,
+                                            frameConversionType convType);
+static void             K32WCopy(uint8_t *aFieldValue, uint8_t **aPsdu, uint8_t copySize, frameConversionType convType);
+static void             K32WResetRxRingBuffer(rxRingBuffer *aRxRing);
+static void             K32WPushRxRingBuffer(rxRingBuffer *aRxRing, tsRxFrameFormat *aRxFrame);
+static tsRxFrameFormat *K32WPopRxRingBuffer(rxRingBuffer *aRxRing);
+static bool             K32WIsEmptyRxRingBuffer(rxRingBuffer *aRxRing);
+static tsRxFrameFormat *K32WGetFrame(tsRxFrameFormat *aRxFrame, uint8_t *aRxFrameIndex);
+static void             K32WEnableReceive(bool_t isNewFrameNeeded);
+static void             K32WRestartRx();
 
 /* Private variables declaration */
 static otRadioState sState = OT_RADIO_STATE_DISABLED;
@@ -223,51 +208,37 @@ static uint16_t  sShortAddress;
 static tsExtAddr sExtAddress;
 static uint64_t  sCustomExtAddr = 0;
 
-#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
-/* big endian version of extAddr for otMacFrameProcessTransmitAesCcm() */
-static otExtAddress sRevExtAddr;
-#endif
-
 static fpNeighShortAddr sFpShortAddr[MAX_FP_ADDRS]; /* Frame Pending short addresses array */
 static uint16_t         sFpShortAddrMask;           /* Mask - sFpShortAddr valid entries */
 
 static fpNeighExtAddr sFpExtAddr[MAX_FP_ADDRS]; /* Frame Pending extended addresses array */
 static uint16_t       sFpExtAddrMask;           /* Mask - sFpExtAddr is valid */
 
-static rxRingBuffer      sRxRing;                       /* Receive Ring Buffer */
-static rxRingBufferEntry sRxFrame[K32W_RX_BUFFERS];     /* RX Buffers */
-static tsPhyFrame *      sRxFrameInProcess;             /* RX Frame currently in processing */
-static bool_t            sIsRxDisabled;                 /* TRUE if RX was disabled due to no RX bufs */
-static uint8_t           sRxFrameIndex;                 /* Index tracking the sRxFrame array */
-static teRxOption        sRxOpt = E_MMAC_RX_START_NOW | /* RX Options */
+static rxRingBuffer     sRxRing;                       /* Receive Ring Buffer */
+static tsRxFrameFormat  sRxFrame[K32W_RX_BUFFERS];     /* RX Buffers */
+static tsRxFrameFormat *sRxFrameInProcess;             /* RX Frame currently in processing */
+static bool_t           sIsRxDisabled;                 /* TRUE if RX was disabled due to no RX bufs */
+static uint8_t          sRxFrameIndex;                 /* Index tracking the sRxFrame array */
+static teRxOption       sRxOpt = E_MMAC_RX_START_NOW | /* RX Options */
                            E_MMAC_RX_ALIGN_NORMAL | E_MMAC_RX_USE_AUTO_ACK | E_MMAC_RX_NO_MALFORMED |
                            E_MMAC_RX_NO_FCS_ERROR | E_MMAC_RX_ADDRESS_MATCH;
 
-static tsPhyFrame   sTxMacFrame; /* TX Frame */
-static tsPhyFrame   sRxAckFrame; /* Frame used for keeping the ACK */
-static otRadioFrame sAckOtFrame; /* Used for ACK frame conversion */
+tsRxFrameFormat        sTxMacFrame;                      /* TX Frame */
+static tsRxFrameFormat sRxAckFrame;                      /* Frame used for keeping the ACK */
+static otRadioFrame    sRxOtFrame;                       /* Used for TX/RX frame conversion */
+static uint8           sRxData[OT_RADIO_FRAME_MAX_SIZE]; /* mPsdu buffer for sRxOtFrame */
 
-static bool_t       sRadioInitForLp    = FALSE;
-static bool_t       sPromiscuousEnable = FALSE;
-static bool_t       sTxDone;    /* TRUE if a TX frame was sent into the air */
-static otError      sTxStatus;  /* Status of the latest TX operation */
-static otRadioFrame sTxOtFrame; /* OT TX Frame to be send */
-static tsPhyFrame * pLastRxFrame = NULL;
-
-#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
-static uint32_t sMacFrameCounter;
-static uint8_t  sKeyId;
-#endif
-
-#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
-static uint32_t sCslPeriod;
-#endif
+static bool_t           sRadioInitForLp    = FALSE;
+static bool_t           sPromiscuousEnable = FALSE;
+static bool_t           sTxDone;                          /* TRUE if a TX frame was sent into the air */
+static otError          sTxStatus;                        /* Status of the latest TX operation */
+static otRadioFrame     sTxOtFrame;                       /* OT TX Frame to be send */
+static uint8_t          sTxData[OT_RADIO_FRAME_MAX_SIZE]; /* mPsdu buffer for sTxOtFrame */
+static tsRxFrameFormat *pLastRxFrame       = NULL;
+static uint8_t          sTxMacRetries      = MAC_TX_RETRIES;
+static uint8_t          sTxMacCsmaBackoffs = MAC_TX_CSMA_MAX_BACKOFFS;
 
 static bool_t sAllowDeviceToSleep = FALSE;
-
-#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
-static bool isCoexInitialized;
-#endif
 
 /* Stub functions for controlling low power mode */
 WEAK void App_AllowDeviceToSleep();
@@ -307,22 +278,29 @@ void App_SetCustomEui64(uint8_t *aIeeeEui64)
 void K32WRadioInit(void)
 {
     /* RX initialization */
-    memset(sRxFrame, 0, sizeof(sRxFrame));
+    memset(sRxFrame, 0, sizeof(tsRxFrameFormat) * K32W_RX_BUFFERS);
     sRxFrameIndex = 0;
 
-    for (int i = 0; i < K32W_RX_BUFFERS; i++)
+    /* TX initialization */
+    sTxOtFrame.mPsdu = sTxData;
+    sRxOtFrame.mPsdu = sRxData;
+
+#if defined(gMWS_UseCoexistence_d) && (gMWS_UseCoexistence_d)
+    void *rfDeny   = NULL;
+    void *rfActive = NULL;
+    void *rfStatus = NULL;
+
+    BOARD_GetCoexIoCfg(&rfDeny, &rfActive, &rfStatus);
+
+    if (MWS_CoexistenceInit(rfDeny, rfActive, rfStatus) != gMWS_Success_c)
     {
-        /* Both frames have the same payload */
-        sRxFrame[i].of.mPsdu = sRxFrame[i].f.uPayload.au8Byte;
+        *(uint32_t *)0xBADC0DE = 0x01; // trap illegal access
+        return;
     }
-
-    /* ACK frame initialization.
-       Both frames have the same payload */
-    sAckOtFrame.mPsdu = sRxAckFrame.uPayload.au8Byte;
-
-    /* TX initialization.
-       Both frames have the same payload */
-    sTxOtFrame.mPsdu = sTxMacFrame.uPayload.au8Byte;
+    vDynEnableCoex((void *)MWS_CoexistenceRegister, (void *)MWS_CoexistenceRequestAccess,
+                   (void *)MWS_CoexistenceSetPriority, (void *)MWS_CoexistenceReleaseAccess,
+                   (void *)MWS_CoexistenceChangeAccess);
+#endif
 }
 
 void K32WRadioProcess(otInstance *aInstance)
@@ -373,13 +351,6 @@ void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aE
         memcpy(&sExtAddress.u32L, aExtAddress->m8, sizeof(uint32_t));
         memcpy(&sExtAddress.u32H, aExtAddress->m8 + sizeof(uint32_t), sizeof(uint32_t));
         vMMAC_SetRxExtendedAddr(&sExtAddress);
-
-#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
-        for (size_t i = 0; i < sizeof(*aExtAddress); i++)
-        {
-            sRevExtAddr.m8[i] = aExtAddress->m8[sizeof(*aExtAddress) - 1 - i];
-        }
-#endif
     }
 }
 
@@ -397,9 +368,19 @@ otError otPlatRadioEnable(otInstance *aInstance)
 
     K32WResetRxRingBuffer(&sRxRing);
     sRxFrameIndex = 0;
-    V2MMAC_Enable();
-    V2MMAC_RegisterIntHandler(K32WISR);
+    vMMAC_Enable();
+    vMMAC_EnableInterrupts(K32WISR);
+    vMMAC_ConfigureInterruptSources(E_MMAC_INT_TX_COMPLETE | E_MMAC_INT_RX_HEADER | E_MMAC_INT_RX_COMPLETE);
     vMMAC_ConfigureRadio();
+    /* The uMAC function receives total MAC attepts but OT sends MAC retries as param so it's not counting
+       the initial transmission */
+
+    /* HW can retry maximum MAC_MAX_TX_RETRIES */
+    if ((sTxMacRetries + 1) > MAC_MAX_TX_RETRIES)
+    {
+        sTxMacRetries = MAC_MAX_TX_RETRIES - 1;
+    }
+    vMMAC_SetTxParameters(sTxMacRetries + 1, MAC_TX_CSMA_MIN_BE, MAC_TX_CSMA_MAX_BE, sTxMacCsmaBackoffs);
 
     if (sRadioInitForLp)
     {
@@ -409,20 +390,9 @@ otError otPlatRadioEnable(otInstance *aInstance)
         vMMAC_SetRxPanId(sPanId);
         vMMAC_SetRxShortAddr(sShortAddress);
     }
-    else
-    {
-        sTxOtFrame.mLength = 0;
-    }
 
-#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
-    /* Frame encryption is done in radio.c/OT stack, for now.
-       Since there is no encryption support in MAC. */
-    V2MMAC_RegisterEncFn(K32WEncFrame);
-
-#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_SUBJECT_ENABLE
-    V2MMAC_RegisterEnhAckVsIeFn(K32WGetVsIeLen, K32WGetVsIeGen);
-#endif
-#endif
+    sTxOtFrame.mLength = 0;
+    sRxOtFrame.mLength = 0;
 
     sInstance = aInstance;
     sState    = OT_RADIO_STATE_SLEEP;
@@ -561,22 +531,16 @@ otError otPlatRadioAddSrcMatchExtEntry(otInstance *aInstance, const otExtAddress
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    otError      error = OT_ERROR_NO_BUFS;
-    uint8_t      idx   = 0;
-    otExtAddress tmp;
-
-    /* K32WCheckIfFpRequired() uses reversed addresses (big endian) */
-    for (size_t i = 0; i < sizeof(*aExtAddress); i++)
-    {
-        tmp.m8[i] = aExtAddress->m8[sizeof(*aExtAddress) - 1 - i];
-    }
+    otError error = OT_ERROR_NO_BUFS;
+    uint8_t idx   = 0;
 
     for (; idx < MAX_FP_ADDRS; idx++)
     {
         if (!BIT_TST(sFpExtAddrMask, idx))
         {
-            sFpExtAddr[idx].panId   = sPanId;
-            sFpExtAddr[idx].extAddr = tmp;
+            sFpExtAddr[idx].panId = sPanId;
+            memcpy(&sFpExtAddr[idx].extAddr.u32L, aExtAddress->m8, sizeof(uint32_t));
+            memcpy(&sFpExtAddr[idx].extAddr.u32H, aExtAddress->m8 + sizeof(uint32_t), sizeof(uint32_t));
             BIT_SET(sFpExtAddrMask, idx);
             error = OT_ERROR_NONE;
             break;
@@ -610,25 +574,13 @@ otError otPlatRadioClearSrcMatchExtEntry(otInstance *aInstance, const otExtAddre
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    otError      error = OT_ERROR_NO_ADDRESS;
-    uint8_t      idx   = 0;
-    otExtAddress tmp;
-
-    /* K32WCheckIfFpRequired() uses reversed addresses (big endian) */
-    for (size_t i = 0; i < sizeof(*aExtAddress); i++)
-    {
-        tmp.m8[i] = aExtAddress->m8[sizeof(*aExtAddress) - 1 - i];
-    }
-
-    uint32_t v1 = *(uint32_t *)tmp.m8;
-    uint32_t v2 = *(uint32_t *)(tmp.m8 + sizeof(uint32_t));
+    otError error = OT_ERROR_NO_ADDRESS;
+    uint8_t idx   = 0;
 
     for (; idx < MAX_FP_ADDRS; idx++)
     {
-        uint32_t t1 = *(uint32_t *)sFpExtAddr[idx].extAddr.m8;
-        uint32_t t2 = *(uint32_t *)(sFpExtAddr[idx].extAddr.m8 + sizeof(uint32_t));
-
-        if (BIT_TST(sFpExtAddrMask, idx) && (t1 == v1) && (t2 == v2))
+        if (BIT_TST(sFpExtAddrMask, idx) && !memcmp(&sFpExtAddr[idx].extAddr.u32L, aExtAddress->m8, sizeof(uint32_t)) &&
+            !memcmp(&sFpExtAddr[idx].extAddr.u32H, aExtAddress->m8 + sizeof(uint32_t), sizeof(uint32_t)))
         {
             BIT_CLR(sFpExtAddrMask, idx);
             error = OT_ERROR_NONE;
@@ -663,42 +615,13 @@ otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *aInstance)
 otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
 {
     otError    error    = OT_ERROR_NONE;
-    teTxOption eOptions = E_MMAC_TX_USE_AUTO_ACK;
-    uint32_t   txTime   = 0;
+    teTxOption eOptions = E_MMAC_TX_START_NOW | E_MMAC_TX_USE_AUTO_ACK;
 
     otEXPECT_ACTION(OT_RADIO_STATE_RECEIVE == sState, error = OT_ERROR_INVALID_STATE);
 
     /* go to TX state */
     sState    = OT_RADIO_STATE_TRANSMIT;
     sTxStatus = OT_ERROR_NONE;
-
-#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
-    if (otMacFrameIsSecurityEnabled(aFrame) && otMacFrameIsKeyIdMode1(aFrame) &&
-        !aFrame->mInfo.mTxInfo.mIsSecurityProcessed)
-    {
-        /* Encryption is done by MAC */
-        eOptions |= E_MMAC_TX_ENC;
-
-        if (!aFrame->mInfo.mTxInfo.mIsHeaderUpdated)
-        {
-            /* the header can be updated with frame counter, keyId and CSL IE */
-            eOptions |= E_MMAC_TX_HDR_UPD;
-        }
-    }
-
-    if (aFrame->mInfo.mTxInfo.mTxDelay)
-    {
-        eOptions |= E_MMAC_TX_USE_CCA | E_MMAC_TX_DELAY_START;
-
-        /* txTime is in the future. Convert it to symbol time */
-        txTime = aFrame->mInfo.mTxInfo.mTxDelay + aFrame->mInfo.mTxInfo.mTxDelayBaseTime;
-        txTime = u32MMAC_GetTime() + (txTime - (uint32_t)otPlatTimeGet()) / US_PER_SYMBOL;
-    }
-    else
-#endif
-    {
-        eOptions |= E_MMAC_TX_START_NOW;
-    }
 
     /* set tx channel */
     if (sChannel != aFrame->mChannel)
@@ -711,33 +634,27 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
         eOptions |= E_MMAC_TX_USE_CCA;
     }
 
-    /* frame conversion. aOtFrame is sTxOtFrame */
-    sTxMacFrame.u8PayloadLength = aFrame->mLength - kFcsSize;
+    K32WFrameConversion(&sTxMacFrame, aFrame, otToMacFrame);
 
-    if (eOptions & E_MMAC_TX_ENC)
+    if (sTxMacRetries != aFrame->mInfo.mTxInfo.mMaxFrameRetries ||
+        sTxMacCsmaBackoffs != aFrame->mInfo.mTxInfo.mMaxCsmaBackoffs)
     {
-        sTxMacFrame.u8PayloadLength -= kMicSize;
+        sTxMacRetries      = aFrame->mInfo.mTxInfo.mMaxFrameRetries;
+        sTxMacCsmaBackoffs = aFrame->mInfo.mTxInfo.mMaxCsmaBackoffs;
+
+        /* HW can retry maximum MAC_MAX_TX_RETRIES */
+        if ((sTxMacRetries + 1) > MAC_MAX_TX_RETRIES)
+        {
+            sTxMacRetries = MAC_MAX_TX_RETRIES - 1;
+        }
+        vMMAC_SetTxParameters(sTxMacRetries + 1, MAC_TX_CSMA_MIN_BE, MAC_TX_CSMA_MAX_BE, sTxMacCsmaBackoffs);
     }
+
+    /* stop rx is handled by uMac tx function */
+    vMMAC_StartMacTransmit(&sTxMacFrame.sFrameBody, eOptions);
 
     /* Set RX buffer pointer for ACK */
-    vMMAC_SetRxFrame((tsRxFrameFormat *)&sRxAckFrame);
-
-    /* Status notification is received via K32WISR()  */
-    vMMAC_StartV2MacTransmit(&sTxMacFrame, eOptions, txTime);
-
-    if (eOptions & E_MMAC_TX_ENC)
-    {
-        /* the frames is always encrypted by MAC */
-        aFrame->mInfo.mTxInfo.mIsSecurityProcessed = true;
-
-        if (eOptions & E_MMAC_TX_HDR_UPD)
-        {
-            /* the header is always updated by MAC */
-            aFrame->mInfo.mTxInfo.mIsHeaderUpdated = true;
-
-            sMacFrameCounter++; /* get it from MAC? */
-        }
-    }
+    vMMAC_SetRxFrame(&sRxAckFrame);
 
     otPlatRadioTxStarted(aInstance, aFrame);
 
@@ -795,13 +712,7 @@ otRadioCaps otPlatRadioGetCaps(otInstance *aInstance)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    return OT_RADIO_CAPS_ACK_TIMEOUT
-#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
-           /* MAC doesn't support enc/dec. It uses K32WEncFrame() callback */
-           | OT_RADIO_CAPS_TRANSMIT_SEC | OT_RADIO_CAPS_TRANSMIT_TIMING
-    // | OT_RADIO_CAPS_SLEEP_TO_TX
-#endif
-        ;
+    return OT_RADIO_CAPS_ACK_TIMEOUT | OT_RADIO_CAPS_TRANSMIT_RETRIES | OT_RADIO_CAPS_CSMA_BACKOFF;
 }
 
 bool otPlatRadioGetPromiscuous(otInstance *aInstance)
@@ -917,36 +828,33 @@ int8_t otPlatRadioGetReceiveSensitivity(otInstance *aInstance)
  */
 static void K32WISR(uint32_t u32IntBitmap)
 {
-    rxRingBufferEntry *rbe = NULL;
+    tsRxFrameFormat *pRxFrame = NULL;
 
     switch (sState)
     {
     case OT_RADIO_STATE_RECEIVE:
 
         /* no rx errors */
-        if (0 == u32V2MAC_GetRxErrors())
+        if (0 == u32MMAC_GetRxErrors())
         {
             if (u32IntBitmap & E_MMAC_INT_RX_HEADER)
             {
-                /* This event doesn't mean end of reception */
-
                 /* go back one index from current frame index */
-                rbe = &sRxFrame[(sRxFrameIndex + K32W_RX_BUFFERS - 1) % K32W_RX_BUFFERS];
+                pRxFrame = &sRxFrame[(sRxFrameIndex + K32W_RX_BUFFERS - 1) % K32W_RX_BUFFERS];
 
                 /* FP processing first */
-                K32WProcessMacHeader(&rbe->f);
+                K32WProcessMacHeader(pRxFrame);
+
+                /* RX interrupt fired so it's safe to consume the frame */
+                K32WPushRxRingBuffer(&sRxRing, pRxFrame);
+
+                if (0 == (pRxFrame->sFrameBody.u16FCF & kFcfAckRequest))
+                {
+                    K32WEnableReceive(TRUE);
+                }
             }
             else if (u32IntBitmap & E_MMAC_INT_RX_COMPLETE)
             {
-                /* go back one index from current frame index */
-                rbe = &sRxFrame[(sRxFrameIndex + K32W_RX_BUFFERS - 1) % K32W_RX_BUFFERS];
-
-                /* Get rx info for frame */
-                K32WGetRxFrameInfo(rbe);
-
-                /* RX interrupt fired so it's safe to consume the frame */
-                K32WPushRxRingBuffer(&sRxRing, rbe);
-
                 K32WEnableReceive(TRUE);
             }
         }
@@ -962,7 +870,8 @@ static void K32WISR(uint32_t u32IntBitmap)
 
         if (u32IntBitmap & E_MMAC_INT_TX_COMPLETE)
         {
-            uint32_t txErrors = u32V2MAC_GetTxErrors();
+            uint32_t txErrors = u32MMAC_GetTxErrors();
+            sTxDone           = TRUE;
 
             if (txErrors & E_MMAC_TXSTAT_CCA_BUSY)
             {
@@ -978,19 +887,13 @@ static void K32WISR(uint32_t u32IntBitmap)
             }
             else if ((txErrors & E_MMAC_TXSTAT_TXPCTO) || (txErrors & E_MMAC_TXSTAT_TXTO))
             {
-                /* The JN518x/K32W0x1 has a TXTO timeout.
-                   Describe failure as a CCA failure for onward processing */
+                /* The JN518x/K32W0x1 has a TXTO timeout that we are using to catch and cope with the curious
+                hang-up issue */
+                vMMAC_AbortRadio();
+
+                /* Describe failure as a CCA failure for onward processing */
                 sTxStatus = OT_ERROR_CHANNEL_ACCESS_FAILURE;
             }
-            else
-            {
-                /* No error, convert ACK */
-                K32WFrameConversion(&sRxAckFrame, &sAckOtFrame);
-                sAckOtFrame.mChannel = sTxOtFrame.mChannel; /* ACK channel */
-            }
-
-            /* Tx finished */
-            sTxDone = TRUE;
 
             /* go to RX and restore channel */
             if (sChannel != sTxOtFrame.mChannel)
@@ -1020,21 +923,84 @@ static void K32WISR(uint32_t u32IntBitmap)
  * @param[in] aRxFrame     Pointer to the latest received MAC packet
  *
  */
-static void K32WProcessMacHeader(tsPhyFrame *aRxFrame)
+static void K32WProcessMacHeader(tsRxFrameFormat *aRxFrame)
 {
-    /* Make sure this is set to 0 when we are not dealing with a data request */
-    aRxFrame->au8Padding[0] = 0;
-
     /* check if frame pending processing is required */
-    if (!aRxFrame)
-        return;
+    if (aRxFrame && sIsFpEnabled)
+    {
+        /* Intra-PAN bit set? */
+        if ((kFcfPanidCompression & aRxFrame->sFrameBody.u16FCF) &&
+            (kFcfDstAddrNone != (aRxFrame->sFrameBody.u16FCF & kFcfDstAddrMask)))
+        {
+            /* Read destination PAN ID into source PAN ID: they are the same */
+            aRxFrame->sFrameBody.u16SrcPAN = aRxFrame->sFrameBody.u16DestPAN;
+        }
 
-    bool isFpRequired = K32WCheckIfFpRequired(aRxFrame);
+        if (K32WIsDataReq(aRxFrame))
+        {
+            vMMAC_SetTxPend(K32WCheckIfFpRequired(aRxFrame));
+        }
+        else
+        {
+            /* Make sure this is set to 0 when we are not dealing with a data request */
+            aRxFrame->sFrameBody.u16Unused = 0;
+        }
+    }
+}
 
-    vMMAC_SetTxPend(isFpRequired);
+/**
+ * Check if aRxFrame is a MAC Data Request Command
+ *
+ * @param[in] aRxFrame     Pointer to the latest received MAC packet
+ *
+ * @return TRUE 	aRxFrame is a MAC Data Request Frame
+ * @return FALSE	aRxFrame is not a MAC Data Request Frame
+ */
+static bool_t K32WIsDataReq(tsRxFrameFormat *aRxFrame)
+{
+    bool_t  isDataReq = FALSE;
+    uint8_t offset    = 0;
 
-    /* use the unused filed to store if the frame was ack'ed with FP and report this back to OT stack */
-    aRxFrame->au8Padding[0] = isFpRequired;
+    if (kFcfTypeMacCommand == (aRxFrame->sFrameBody.u16FCF & kFcfMacFrameTypeMask))
+    {
+        uint8_t secControlField = aRxFrame->sFrameBody.uPayload.au8Byte[0];
+
+        if (secControlField & kSecLevelMask)
+        {
+            offset += kSecurityControlSize;
+        }
+
+        if (!(secControlField & kFrameCounterSuppression))
+        {
+            offset += kFrameCounterSize;
+        }
+
+        switch (secControlField & kKeyIdModeMask)
+        {
+        case kKeyIdMode0:
+            offset += kKeySourceSizeMode0;
+            break;
+
+        case kKeyIdMode1:
+            offset += kKeySourceSizeMode1 + kKeyIndexSize;
+            break;
+
+        case kKeyIdMode2:
+            offset += kKeySourceSizeMode2 + kKeyIndexSize;
+            break;
+
+        case kKeyIdMode3:
+            offset += kKeySourceSizeMode3 + kKeyIndexSize;
+            break;
+        }
+
+        if (kMacFrameDataReq == aRxFrame->sFrameBody.uPayload.au8Byte[offset])
+        {
+            isDataReq = TRUE;
+        }
+    }
+
+    return isDataReq;
 }
 
 /**
@@ -1047,69 +1013,42 @@ static void K32WProcessMacHeader(tsPhyFrame *aRxFrame)
  * @return    FALSE	    Frame Pending bit shouldn't be set in the reply
  *
  */
-static bool K32WCheckIfFpRequired(tsPhyFrame *aRxFrame)
+static bool K32WCheckIfFpRequired(tsRxFrameFormat *aRxFrame)
 {
-    bool         isFpRequired = FALSE;
-    uint8_t      idx          = 0;
-    otRadioFrame f;
-    otMacAddress srcAddr;
+    bool     isFpRequired = FALSE;
+    uint16_t panId        = aRxFrame->sFrameBody.u16SrcPAN;
+    uint8_t  idx          = 0;
 
-    f.mPsdu   = aRxFrame->uPayload.au8Byte;
-    f.mLength = aRxFrame->u8PayloadLength;
+    if (kFcfSrcAddrShort == (aRxFrame->sFrameBody.u16FCF & kFcfSrcAddrMask))
+    {
+        uint16_t shortAddr = aRxFrame->sFrameBody.uSrcAddr.u16Short;
 
-    if (!(
-#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
-            /* Enhanced frame pending */
-            (otMacFrameIsVersion2015(&f) && otMacFrameIsCommand(&f)) || otMacFrameIsData(&f) ||
-#endif
-            otMacFrameIsDataRequest(&f)))
-    {
-        return FALSE;
-    }
-
-    if (!sIsFpEnabled)
-    {
-        return TRUE;
-    }
-
-    if (otMacFrameGetSrcAddr(&f, &srcAddr))
-    {
-        return FALSE;
-    }
-
-    if (srcAddr.mType == OT_MAC_ADDRESS_TYPE_NONE)
-    {
-        isFpRequired = TRUE;
-    }
-    else if (srcAddr.mType == OT_MAC_ADDRESS_TYPE_SHORT)
-    {
         for (idx = 0; idx < MAX_FP_ADDRS; idx++)
         {
-            if (BIT_TST(sFpShortAddrMask, idx) && (sFpShortAddr[idx].macAddress == srcAddr.mAddress.mShortAddress))
+            if (BIT_TST(sFpShortAddrMask, idx) && (sFpShortAddr[idx].macAddress == shortAddr) &&
+                sFpShortAddr[idx].panId == panId)
             {
                 isFpRequired = TRUE;
                 break;
             }
         }
     }
-    else if (srcAddr.mType == OT_MAC_ADDRESS_TYPE_EXTENDED)
+    else
     {
-        /* srcAddr.mAddress.mExtAddress is returned in reverse order (big endian) */
-        uint32_t v1 = *(uint32_t *)srcAddr.mAddress.mExtAddress.m8;
-        uint32_t v2 = *(uint32_t *)(srcAddr.mAddress.mExtAddress.m8 + sizeof(uint32_t));
-
         for (idx = 0; idx < MAX_FP_ADDRS; idx++)
         {
-            uint32_t t1 = *(uint32_t *)sFpExtAddr[idx].extAddr.m8;
-            uint32_t t2 = *(uint32_t *)(sFpExtAddr[idx].extAddr.m8 + sizeof(uint32_t));
-
-            if (BIT_TST(sFpExtAddrMask, idx) && (t1 == v1) && (t2 == v2))
+            if (BIT_TST(sFpExtAddrMask, idx) &&
+                (sFpExtAddr[idx].extAddr.u32L == aRxFrame->sFrameBody.uSrcAddr.sExt.u32L) &&
+                (sFpExtAddr[idx].extAddr.u32H == aRxFrame->sFrameBody.uSrcAddr.sExt.u32H) &&
+                sFpExtAddr[idx].panId == panId)
             {
                 isFpRequired = TRUE;
                 break;
             }
         }
     }
+    /* use the unsued filed to store if the frame was ack'ed with FP and report this back to OT stack */
+    aRxFrame->sFrameBody.u16Unused = isFpRequired;
 
     return isFpRequired;
 }
@@ -1121,11 +1060,19 @@ static bool K32WCheckIfFpRequired(tsPhyFrame *aRxFrame)
  */
 static void K32WProcessRxFrames(otInstance *aInstance)
 {
-    rxRingBufferEntry *rbe = NULL;
+    tsRxFrameFormat *pRxMacFormatFrame = NULL;
 
-    while ((rbe = K32WPopRxRingBuffer(&sRxRing)) != NULL)
+    while ((pRxMacFormatFrame = K32WPopRxRingBuffer(&sRxRing)) != NULL)
     {
-        otPlatRadioReceiveDone(aInstance, &rbe->of, OT_ERROR_NONE);
+        if (OT_ERROR_NONE == K32WFrameConversion(pRxMacFormatFrame, &sRxOtFrame, macToOtFrame))
+        {
+            otPlatRadioReceiveDone(aInstance, &sRxOtFrame, OT_ERROR_NONE);
+        }
+        else
+        {
+            otPlatRadioReceiveDone(aInstance, NULL, OT_ERROR_ABORT);
+        }
+        memset(pRxMacFormatFrame, 0, sizeof(tsRxFrameFormat));
 
         OSA_InterruptDisable();
         sRxFrameInProcess = NULL;
@@ -1149,7 +1096,8 @@ static void K32WProcessTxFrame(otInstance *aInstance)
         sTxDone = FALSE;
         if ((sTxOtFrame.mPsdu[kMacFcfLowOffset] & kFcfAckRequest) && (OT_ERROR_NONE == sTxStatus))
         {
-            otPlatRadioTxDone(aInstance, &sTxOtFrame, &sAckOtFrame, sTxStatus);
+            K32WFrameConversion(&sRxAckFrame, &sRxOtFrame, macToOtFrame);
+            otPlatRadioTxDone(aInstance, &sTxOtFrame, &sRxOtFrame, sTxStatus);
         }
         else
         {
@@ -1158,48 +1106,136 @@ static void K32WProcessTxFrame(otInstance *aInstance)
     }
 }
 
-static void K32WGetRxFrameInfo(rxRingBufferEntry *rbe)
-{
-    memset(&rbe->of.mInfo.mRxInfo, 0, sizeof(rbe->of.mInfo.mRxInfo));
-
-    /* must be called after Rx complete to get correct values from MAC */
-    K32WFrameConversion(&rbe->f, &rbe->of);
-
-    rbe->of.mChannel                             = sChannel; /* Rx channel */
-    rbe->of.mInfo.mRxInfo.mAckedWithFramePending = (bool)rbe->f.au8Padding[0];
-
-#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
-    if (sCslPeriod)
-    {
-        uint8_t keyId;
-
-        if (otMacFrameIsVersion2015(&rbe->of) && otMacFrameIsAckRequested(&rbe->of) &&
-            otMacFrameIsSecurityEnabled(&rbe->of) && otMacFrameIsKeyIdMode1(&rbe->of) &&
-            ((keyId = otMacFrameGetKeyId(&rbe->of)) != 0) &&
-            ((keyId == sKeyId) || (keyId == sKeyId - 1) || (keyId == sKeyId + 1)))
-        {
-            rbe->of.mInfo.mRxInfo.mAckedWithSecEnhAck = true;
-            rbe->of.mInfo.mRxInfo.mAckKeyId           = keyId;
-            rbe->of.mInfo.mRxInfo.mAckFrameCounter    = sMacFrameCounter;
-            sMacFrameCounter++;
-        }
-    }
-#endif
-}
-
 /**
  * aMacFormatFrame <-> aOtFrame bidirectional conversion
  *
- * @param[in] data             Pointer to frame or ring buffer entry
+ * @param[in] aMacFrameFormat  Pointer to a MAC Format frame
  * @param[in] aOtFrame         Pointer to OpenThread Frame
+ * @param[in] convType         Conversion direction
+ *
+ * @return    OT_ERROR_NONE      No conversion error
+ * @return    OT_ERROR_PARSE     Conversion failed due to parsing error
  */
-static void K32WFrameConversion(tsPhyFrame *aPhyFrame, otRadioFrame *aOtFrame)
+static otError K32WFrameConversion(tsRxFrameFormat *   aMacFormatFrame,
+                                   otRadioFrame *      aOtFrame,
+                                   frameConversionType convType)
 {
-    aOtFrame->mLength = aPhyFrame->u8PayloadLength;
-    aOtFrame->mInfo.mRxInfo.mTimestamp =
-        otPlatTimeGet() - (uint64_t)(u32MMAC_GetTime() - u32V2MAC_GetRxTimestamp()) * US_PER_SYMBOL;
-    aOtFrame->mInfo.mRxInfo.mLqi  = u8MMAC_GetRxLqi(NULL);
-    aOtFrame->mInfo.mRxInfo.mRssi = i8Radio_GetLastPacketRSSI();
+    tsMacFrame *pMacFrame         = &aMacFormatFrame->sFrameBody;
+    uint8_t *   pSavedStartRxPSDU = aOtFrame->mPsdu;
+    uint8_t *   pPsdu             = aOtFrame->mPsdu;
+    uint16_t    aFcf              = 0;
+    otError     error             = OT_ERROR_NONE;
+
+    /* frame control field */
+    K32WCopy((uint8_t *)&pMacFrame->u16FCF, &pPsdu, kFcfSize, convType);
+    aFcf = pMacFrame->u16FCF;
+
+    /* sequence number */
+    if (0 == (aFcf & kFcfSeqNbSuppresssion))
+    {
+        K32WCopy(&pMacFrame->u8SequenceNum, &pPsdu, kDsnSize, convType);
+    }
+
+    /* destination Pan Id + address */
+    switch (aFcf & kFcfDstAddrMask)
+    {
+    case kFcfDstAddrNone:
+        break;
+
+    case kFcfDstAddrShort:
+        K32WCopy((uint8_t *)&pMacFrame->u16DestPAN, &pPsdu, sizeof(otPanId), convType);
+        K32WCopy((uint8_t *)&pMacFrame->uDestAddr.u16Short, &pPsdu, sizeof(otShortAddress), convType);
+        break;
+
+    case kFcfDstAddrExt:
+        K32WCopy((uint8_t *)&pMacFrame->u16DestPAN, &pPsdu, sizeof(otPanId), convType);
+        K32WCopy((uint8_t *)&pMacFrame->uDestAddr.sExt.u32L, &pPsdu, sizeof(uint32_t), convType);
+        K32WCopy((uint8_t *)&pMacFrame->uDestAddr.sExt.u32H, &pPsdu, sizeof(uint32_t), convType);
+        break;
+
+    default:
+        error = OT_ERROR_PARSE;
+        otEXPECT(false);
+    }
+
+    /* Source Pan Id */
+    if ((aFcf & kFcfSrcAddrMask) != kFcfSrcAddrNone && (aFcf & kFcfPanidCompression) == 0)
+    {
+        K32WCopy((uint8_t *)&pMacFrame->u16SrcPAN, &pPsdu, sizeof(otPanId), convType);
+    }
+
+    /* Source Address */
+    switch (aFcf & kFcfSrcAddrMask)
+    {
+    case kFcfSrcAddrNone:
+        break;
+
+    case kFcfSrcAddrShort:
+        K32WCopy((uint8_t *)&pMacFrame->uSrcAddr.u16Short, &pPsdu, sizeof(otShortAddress), convType);
+        break;
+
+    case kFcfSrcAddrExt:
+        K32WCopy((uint8_t *)&pMacFrame->uSrcAddr.sExt.u32L, &pPsdu, sizeof(uint32_t), convType);
+        K32WCopy((uint8_t *)&pMacFrame->uSrcAddr.sExt.u32H, &pPsdu, sizeof(uint32_t), convType);
+        break;
+
+    default:
+        error = OT_ERROR_PARSE;
+        otEXPECT(false);
+    }
+
+    if (convType == otToMacFrame)
+    {
+        pMacFrame->u8PayloadLength = aOtFrame->mLength - (pPsdu - pSavedStartRxPSDU) - kFcfSize;
+    }
+    else
+    {
+        aOtFrame->mInfo.mRxInfo.mAckedWithFramePending = (bool)aMacFormatFrame->sFrameBody.u16Unused;
+        aOtFrame->mInfo.mRxInfo.mLqi                   = aMacFormatFrame->u8LinkQuality;
+        aOtFrame->mInfo.mRxInfo.mRssi                  = i8Radio_GetLastPacketRSSI();
+        aOtFrame->mChannel                             = sChannel;
+#if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
+#error Time sync requires the timestamp of SFD rather than that of rx done!
+#else
+        if (otPlatRadioGetPromiscuous(sInstance))
+#endif
+        {
+            aOtFrame->mInfo.mRxInfo.mTimestamp = otPlatAlarmMilliGetNow() * 1000;
+        }
+
+        aOtFrame->mLength = pPsdu + (pMacFrame->u8PayloadLength) - pSavedStartRxPSDU + sizeof(pMacFrame->u16FCS);
+    }
+    K32WCopy((uint8_t *)&pMacFrame->uPayload, &pPsdu, pMacFrame->u8PayloadLength, convType);
+
+exit:
+    return error;
+}
+
+/**
+ * Helper function for aMacFrame <-> aOtFrame bidirectional conversion
+ * Copies from/to PSDU to/from specific field
+ *
+ * @param[in] aFieldValue     Pointer to field Value which needs to be copied/filled
+ * @param[in] aPsdu           Pointer to PSDU part which needs to be copied/filled
+ * @param[in] copySize        Bytes copied
+ * @param[in] convType        Conversion Type
+ *
+ * @return    OT_ERROR_NONE      No conversion error
+ * @return    OT_ERROR_PARSE     Conversion failed due to parsing error
+ */
+
+static void K32WCopy(uint8_t *aFieldValue, uint8_t **aPsdu, uint8_t copySize, frameConversionType convType)
+{
+    if (convType == macToOtFrame)
+    {
+        memcpy(*aPsdu, aFieldValue, copySize);
+    }
+    else
+    {
+        memcpy(aFieldValue, *aPsdu, copySize);
+    }
+
+    (*aPsdu) += copySize;
 }
 
 /**
@@ -1219,11 +1255,11 @@ static void K32WResetRxRingBuffer(rxRingBuffer *aRxRing)
  * In case the ring buffer is full, the oldest address is overwritten.
  *
  * @param[in] aRxRing             Pointer to the RX Ring Buffer
- * @param[in] rxRingBufferEntry   The address a received frame + info
+ * @param[in] rxFrame             The address for a received frame
  */
-static void K32WPushRxRingBuffer(rxRingBuffer *aRxRing, rxRingBufferEntry *rbe)
+static void K32WPushRxRingBuffer(rxRingBuffer *aRxRing, tsRxFrameFormat *aRxFrame)
 {
-    aRxRing->buffer[aRxRing->head] = rbe;
+    aRxRing->buffer[aRxRing->head] = aRxFrame;
     if (aRxRing->isFull)
     {
         aRxRing->tail = (aRxRing->tail + 1) % K32W_RX_BUFFERS;
@@ -1241,23 +1277,23 @@ static void K32WPushRxRingBuffer(rxRingBuffer *aRxRing, rxRingBufferEntry *rbe)
  *
  * @param[in] aRxRing           Pointer to the RX Ring Buffer
  *
- * @return    rxRingBufferEntry Pointer to a received frame + info
+ * @return    tsRxFrameFormat   Pointer to a received frame
  * @return    NULL              In case the RX Ring buffer is empty
  */
-static rxRingBufferEntry *K32WPopRxRingBuffer(rxRingBuffer *aRxRing)
+static tsRxFrameFormat *K32WPopRxRingBuffer(rxRingBuffer *aRxRing)
 {
-    rxRingBufferEntry *rbe = NULL;
+    tsRxFrameFormat *rxFrame = NULL;
 
     OSA_InterruptDisable();
     if (!K32WIsEmptyRxRingBuffer(aRxRing))
     {
-        rbe             = aRxRing->buffer[aRxRing->tail];
+        rxFrame         = aRxRing->buffer[aRxRing->tail];
         aRxRing->isFull = FALSE;
         aRxRing->tail   = (aRxRing->tail + 1) % K32W_RX_BUFFERS;
     }
     OSA_InterruptEnable();
 
-    return rbe;
+    return rxFrame;
 }
 
 /**
@@ -1280,17 +1316,16 @@ static bool K32WIsEmptyRxRingBuffer(rxRingBuffer *aRxRing)
  * reception is complete (the RX interrupt fires) this address is added to the
  * ring buffer and the frame can be consumed by the process context.
  *
- * @param[in] aRxFrame            Pointer to an array of rxRingBufferEntry
+ * @param[in] aRxFrame            Pointer to an array of tsRxFrameFormat
  * @param[in] aRxFrameIndex       Pointer to the current index in aRxFrame array
  *
- * @return    tsPhyFrame          Pointer to a tsPhyFrame
+ * @return    tsRxFrameFormat     Pointer to a tsRxFrameFormat
  */
-static tsPhyFrame *K32WGetFrame(rxRingBufferEntry *aRxFrame, uint8_t *aRxFrameIndex)
+static tsRxFrameFormat *K32WGetFrame(tsRxFrameFormat *aRxFrame, uint8_t *aRxFrameIndex)
 {
-    tsPhyFrame *       frame = NULL;
-    rxRingBufferEntry *cbe   = &aRxFrame[*aRxFrameIndex];
+    tsRxFrameFormat *frame = NULL;
 
-    frame = &cbe->f;
+    frame = &aRxFrame[*aRxFrameIndex];
     if (frame != sRxFrameInProcess)
     {
         *aRxFrameIndex = (*aRxFrameIndex + 1) % K32W_RX_BUFFERS;
@@ -1320,228 +1355,29 @@ static tsPhyFrame *K32WGetFrame(rxRingBufferEntry *aRxFrame, uint8_t *aRxFrameIn
  */
 static void K32WEnableReceive(bool_t isNewFrameNeeded)
 {
-    tsPhyFrame *pRxFrame = NULL;
+    tsRxFrameFormat *pRxFrame = NULL;
 
     if (isNewFrameNeeded)
     {
         if ((pRxFrame = K32WGetFrame(sRxFrame, &sRxFrameIndex)) != NULL)
         {
             pLastRxFrame = pRxFrame;
-            vMMAC_StartV2MacReceive(pRxFrame, sRxOpt);
+            vMMAC_StartMacReceive(&pRxFrame->sFrameBody, sRxOpt);
         }
         otSysEventSignalPending();
     }
     else
     {
-        vMMAC_StartV2MacReceive(pLastRxFrame, sRxOpt);
+        vMMAC_StartMacReceive(&pLastRxFrame->sFrameBody, sRxOpt);
     }
 }
 
-#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
-void otPlatRadioSetMacKey(otInstance *            aInstance,
-                          uint8_t                 aKeyIdMode,
-                          uint8_t                 aKeyId,
-                          const otMacKeyMaterial *aPrevKey,
-                          const otMacKeyMaterial *aCurrKey,
-                          const otMacKeyMaterial *aNextKey,
-                          otRadioKeyType          aKeyType)
+/**
+ * Function used for MMAC-RX Restart
+ *
+ */
+static void K32WRestartRx()
 {
-    OT_UNUSED_VARIABLE(aInstance);
-    OT_UNUSED_VARIABLE(aKeyIdMode);
-
-    assert(aPrevKey != NULL && aCurrKey != NULL && aNextKey != NULL);
-
-    sKeyId = aKeyId;
-
-    /* Assuming literal keys are used */
-    V2MMAC_SetMacKey(aKeyId, aPrevKey->mKeyMaterial.mKey.m8, aCurrKey->mKeyMaterial.mKey.m8,
-                     aNextKey->mKeyMaterial.mKey.m8);
+    vMMAC_SetRxProm(((uint32)sRxOpt >> 8) & ALL_FFs_BYTE);
+    vMMAC_RxCtlUpdate(((uint32)sRxOpt) & ALL_FFs_BYTE);
 }
-
-void otPlatRadioSetMacFrameCounter(otInstance *aInstance, uint32_t aMacFrameCounter)
-{
-    OT_UNUSED_VARIABLE(aInstance);
-
-    sMacFrameCounter = aMacFrameCounter;
-    V2MMAC_SetMacFrameCounter(aMacFrameCounter);
-}
-
-#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
-otError otPlatRadioEnableCsl(otInstance *        aInstance,
-                             uint32_t            aCslPeriod,
-                             otShortAddress      aShortAddr,
-                             const otExtAddress *aExtAddr)
-{
-    OT_UNUSED_VARIABLE(aInstance);
-    OT_UNUSED_VARIABLE(aShortAddr);
-    OT_UNUSED_VARIABLE(aExtAddr);
-
-    sCslPeriod = aCslPeriod;
-    V2MMAC_EnableCsl(aCslPeriod);
-
-    return OT_ERROR_NONE;
-}
-
-void otPlatRadioUpdateCslSampleTime(otInstance *aInstance, uint32_t aCslSampleTime)
-{
-    OT_UNUSED_VARIABLE(aInstance);
-
-    /* aCslSampleTime is the next channel sample so in the future of the current Rx */
-    aCslSampleTime = u32MMAC_GetTime() * US_PER_SYMBOL + (aCslSampleTime - (uint32_t)otPlatTimeGet());
-
-    V2MMAC_SetCslSampleTime(aCslSampleTime);
-}
-
-uint8_t otPlatRadioGetCslClockUncertainty(otInstance *aInstance)
-{
-    OT_UNUSED_VARIABLE(aInstance);
-
-    return CSL_UNCERT;
-}
-
-#endif
-
-uint64_t otPlatRadioGetNow(otInstance *aInstance)
-{
-    OT_UNUSED_VARIABLE(aInstance);
-
-    return otPlatTimeGet();
-}
-
-static void K32WEncFrame(void *t, const void *key)
-{
-    otRadioFrame f;
-
-    f.mPsdu   = ((tsPhyFrame *)t)->uPayload.au8Byte;
-    f.mLength = ((tsPhyFrame *)t)->u8PayloadLength;
-
-    f.mInfo.mTxInfo.mAesKey              = key;
-    f.mInfo.mTxInfo.mIsSecurityProcessed = false;
-
-    otMacFrameProcessTransmitAesCcm(&f, &sRevExtAddr);
-}
-
-#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_SUBJECT_ENABLE
-otError otPlatRadioConfigureEnhAckProbing(otInstance *        aInstance,
-                                          otLinkMetrics       aLinkMetrics,
-                                          otShortAddress      aShortAddress,
-                                          const otExtAddress *aExtAddress)
-{
-    OT_UNUSED_VARIABLE(aInstance);
-
-    otError error = OT_ERROR_NONE;
-
-    error = otLinkMetricsConfigureEnhAckProbing(aShortAddress, aExtAddress, aLinkMetrics);
-    otEXPECT(error == OT_ERROR_NONE);
-
-exit:
-    return error;
-}
-
-static uint8_t K32WGetVsIeLen(void *t)
-{
-    uint8_t      len;
-    otRadioFrame f;
-    otMacAddress dstAddr;
-
-    f.mPsdu   = ((tsPhyFrame *)t)->uPayload.au8Byte;
-    f.mLength = ((tsPhyFrame *)t)->u8PayloadLength;
-
-    otMacFrameGetDstAddr(&f, &dstAddr);
-    if ((len = otLinkMetricsEnhAckGetDataLen(&dstAddr)) > 0)
-    {
-        uint8_t tmp[OT_ACK_IE_MAX_SIZE];
-
-        len = otMacFrameGenerateEnhAckProbingIe(tmp, NULL, len);
-    }
-
-    return len;
-}
-
-static void K32WGetVsIeGen(void *t, uint8_t *b)
-{
-    uint8_t      tmp[OT_ENH_PROBING_IE_DATA_MAX_SIZE];
-    uint8_t      len;
-    otRadioFrame f;
-    otMacAddress dstAddr;
-
-    uint8_t lqi  = u8MMAC_GetRxLqi(NULL);
-    int8_t  rssi = i8Radio_GetLastPacketRSSI();
-
-    f.mPsdu   = ((tsPhyFrame *)t)->uPayload.au8Byte;
-    f.mLength = ((tsPhyFrame *)t)->u8PayloadLength;
-
-    otMacFrameGetDstAddr(&f, &dstAddr);
-    if ((len = otLinkMetricsEnhAckGenData(&dstAddr, lqi, rssi, tmp)) > 0)
-    {
-        otMacFrameGenerateEnhAckProbingIe(b, tmp, len);
-    }
-}
-#endif
-
-uint8_t otPlatRadioGetCslAccuracy(otInstance *aInstance)
-{
-    OT_UNUSED_VARIABLE(aInstance);
-
-    return CONFIG_PLATFORM_CSL_ACCURACY;
-}
-#endif
-
-#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
-otError otPlatRadioSetCoexEnabled(otInstance *aInstance, bool aEnabled)
-{
-    otError error    = OT_ERROR_NONE;
-    void *  rfDeny   = NULL;
-    void *  rfActive = NULL;
-    void *  rfStatus = NULL;
-
-    OT_UNUSED_VARIABLE(aInstance);
-
-    if (isCoexInitialized == false)
-    {
-        BOARD_GetCoexIoCfg(&rfDeny, &rfActive, &rfStatus);
-
-        /* This will enable coexistence by calling MWS_CoexistenceEnable() */
-        if (MWS_CoexistenceInit(rfDeny, rfActive, rfStatus) != gMWS_Success_c)
-        {
-            error = OT_ERROR_INVALID_STATE;
-        }
-        else
-        {
-            vDynEnableCoex((void *)MWS_CoexistenceRegister, (void *)MWS_CoexistenceRequestAccess,
-                           (void *)MWS_CoexistenceSetPriority, (void *)MWS_CoexistenceReleaseAccess,
-                           (void *)MWS_CoexistenceChangeAccess);
-            isCoexInitialized = true;
-        }
-    }
-
-    if (aEnabled == true)
-    {
-        /* It's a superflous call if we just initialized... */
-        MWS_CoexistenceEnable();
-    }
-    else
-    {
-        MWS_CoexistenceDisable();
-    }
-
-    return error;
-}
-
-bool otPlatRadioIsCoexEnabled(otInstance *aInstance)
-{
-    OT_UNUSED_VARIABLE(aInstance);
-
-    return MWS_CoexistenceIsEnabled() == 0 ? false : true;
-}
-
-otError otPlatRadioGetCoexMetrics(otInstance *aInstance, otRadioCoexMetrics *aCoexMetrics)
-{
-    otError error = OT_ERROR_NONE;
-    OT_UNUSED_VARIABLE(aInstance);
-
-    assert(aCoexMetrics != NULL);
-
-    return error;
-}
-#endif /* OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE */

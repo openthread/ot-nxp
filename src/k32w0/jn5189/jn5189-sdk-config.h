@@ -29,6 +29,12 @@
 #ifndef JN5189_SDK_CONFIG_H
 #define JN5189_SDK_CONFIG_H
 
+#include "openthread-core-jn5189-config.h"
+
+#ifdef APP_PRE_INCLUDE
+#include APP_PRE_INCLUDE
+#endif
+
 #ifndef gUsePdm_d
 #define gUsePdm_d 1
 #endif
@@ -57,12 +63,33 @@
 #define SUPPORT_FOR_15_4 1
 #endif
 
+#define UART_USE_DRIVER 0
+#define UART_USE_SERIAL_MGR 1
+#define UART_USE_DRIVER_LOG 0
+#define UART_USE_SERIAL_MGR_LOG 1
+#define UART_USE_SWO_LOG 0
+
 #ifndef SDK_DEBUGCONSOLE
-#define SDK_DEBUGCONSOLE 0
+#if ((OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED) && (UART_USE_SWO_LOG == 1))
+#define SDK_DEBUGCONSOLE DEBUGCONSOLE_REDIRECT_TO_SDK
+#else
+#define SDK_DEBUGCONSOLE DEBUGCONSOLE_DISABLE
+#endif
 #endif
 
+#if (UART_USE_SWO_LOG == 1)
+#define SERIAL_PORT_TYPE_SWO 1
+#define SERIAL_PORT_TYPE_UART 0
+#endif
+
+#ifndef gUartDebugConsole_d
+#define gUartDebugConsole_d 0
+#endif
+
+#ifndef PoolsDetails_c
 #define PoolsDetails_c                                 \
     _block_size_ 512 _number_of_blocks_ 2 _pool_id_(0) \
         padding _eol_ _block_size_ 768 _number_of_blocks_ 1 _pool_id_(0) padding _eol_
+#endif
 
 #endif // K32W061_SDK_CONFIG_H

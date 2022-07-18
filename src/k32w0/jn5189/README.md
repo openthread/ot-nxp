@@ -1,21 +1,26 @@
 # OpenThread on NXP JN5189 Example
 
-This directory contains example platform drivers for the [NXP JN5189][jn5189] based on [JN5189-DK006][jn5189-dk006] hardware platform.
+This directory contains example platform drivers for the [NXP JN5189][jn5189]
+based on [JN5189-DK006][jn5189-dk006] hardware platform.
 
-The example platform drivers are intended to present the minimal code necessary to support OpenThread. As a result, the example platform drivers do not necessarily highlight the platform's full capabilities.
+The example platform drivers are intended to present the minimal code necessary
+to support OpenThread. As a result, the example platform drivers do not
+necessarily highlight the platform's full capabilities.
 
 [jn5189]: https://www.nxp.com/products/wireless/thread/jn5189-88-t-high-performance-and-ultra-low-power-mcus-for-zigbee-and-thread-with-built-in-nfc-option:JN5189_88_T
 [jn5189-dk006]: https://www.nxp.com/document/guide/getting-started-with-jn5189:GS-JN5189
 
 ## Prerequisites
 
-Before you start building the examples, you must download and install the toolchain and the tools required for flashing and debugging.
+Before you start building the examples, you must download and install the
+toolchain and the tools required for flashing and debugging.
 
 ## Toolchain
 
 OpenThread environment is suited to be run on a Linux-based OS.
 
-In a Bash terminal (found, for example, in Ubuntu OS), follow these instructions to install the GNU toolchain and other dependencies.
+In a Bash terminal (found, for example, in Ubuntu OS), follow these instructions
+to install the GNU toolchain and other dependencies.
 
 ```bash
 $ cd <path-to-ot-nxp>
@@ -36,11 +41,11 @@ $ pip3 install pycryptodome
 
 [mcuxpresso ide]: https://www.nxp.com/support/developer-resources/software-development-tools/mcuxpresso-software-and-tools/mcuxpresso-integrated-development-environment-ide:MCUXpresso-IDE
 
-- Download [JN5189 SDK 2.6.3](https://mcuxpresso.nxp.com/).
-  Creating an nxp.com account is required before being able to download the
-  SDK. Once the account is created, login and follow the steps for downloading
-  SDK_2.6.3_JN5189DK6. The SDK Builder UI selection should be similar with
-  the one from the image below.
+- Download [JN5189 SDK 2.6.3](https://mcuxpresso.nxp.com/). Creating an
+  nxp.com account is required before being able to download the SDK. Once the
+  account is created, login and follow the steps for downloading
+  SDK_2.6.3_JN5189DK6. The SDK Builder UI selection should be similar with the
+  one from the image below.
   ![MCUXpresso SDK Download](../../../doc/img/k32w/sdk_builder_jn5189.JPG)
 
 ## Building the examples
@@ -52,19 +57,27 @@ $ third_party/jn5189_sdk/mr3_fixes/patch_jn5189_mr3_sdk.sh
 $ ./script/build_jn5189
 ```
 
-After a successful build, the `elf` files are found in `build_jn5189/openthread/examples/apps/cli` and include FTD (Full Thread Device), MTD (Minimal Thread Device) and variants of CLI appliations.
+After a successful build, the `elf` files are found in
+`build_jn5189/openthread/examples/apps/cli` and include FTD (Full Thread
+Device), MTD (Minimal Thread Device) and variants of CLI appliations.
 
 ## Flash Binaries
 
-If only flashing is needed then DK6 Flash Programmer can be used. Otherwise, if also debugging capabilities are needed then MCUXpresso IDE should be used.
+If only flashing is needed then DK6 Flash Programmer can be used. Otherwise, if
+also debugging capabilities are needed then MCUXpresso IDE should be used.
 
 ### Using DK6Programmer
 
-Connect to the DK6 board by plugging a mini-USB cable to the connector marked with _FTDI USB_. Also, make sure that jumpers jp4/JP7 are situated in the middle position (_JN UART0 - FTDI_).
+Connect to the DK6 board by plugging a mini-USB cable to the connector marked
+with _FTDI USB_. Also, make sure that jumpers jp4/JP7 are situated in the middle
+position (_JN UART0 - FTDI_).
 
 ![DK6_FTDI](../../../doc/img/k32w/dk6_ftdi.jpg)
 
-DK6 Flash Programmer can be found inside the [SDK][sdk_mcux] at path `tools/JN-SW-4407-DK6-Flash-Programmer`. This is a Windows application that can be installed using the .exe file. Once the application is installed, the COM port for JN5189 must be identified:
+DK6 Flash Programmer can be found inside the [SDK][sdk_mcux] at path
+`tools/JN-SW-4407-DK6-Flash-Programmer`. This is a Windows application that can
+be installed using the .exe file. Once the application is installed, the COM
+port for JN5189 must be identified:
 
 ```
 C:\nxp\DK6ProductionFlashProgrammer>DK6Programmer.exe  --list
@@ -82,17 +95,23 @@ C:\nxp\DK6ProductionFlashProgrammer>DK6Programmer.exe -s COM29 -p ot-rcp.bin
 
 ### Using MCUXpresso IDE
 
-Connect to the DK6 board by plugging a mini-USB cable to the connector marked with _TARGET_. Also, make sure that jumpers JP4/JP7 are situated in the leftmost position (_LPC-JN UART0_).
+Connect to the DK6 board by plugging a mini-USB cable to the connector marked
+with _TARGET_. Also, make sure that jumpers JP4/JP7 are situated in the leftmost
+position (_LPC-JN UART0_).
 
 ![DK6_BOARD_FTDI](../../../doc/img/k32w/dk6_lpc.jpg)
 
-In order to flash the application for debugging we recommend using [MCUXpresso IDE (version >= 11.0.0)](https://www.nxp.com/design/software/development-software/mcuxpresso-software-and-tools-/mcuxpresso-integrated-development-environment-ide:MCUXpresso-IDE?tab=Design_Tools_Tab).
+In order to flash the application for debugging we recommend using
+[MCUXpresso IDE (version >= 11.0.0)](https://www.nxp.com/design/software/development-software/mcuxpresso-software-and-tools-/mcuxpresso-integrated-development-environment-ide:MCUXpresso-IDE?tab=Design_Tools_Tab).
 
-- Import the previously downloaded NXP SDK into MCUXpresso IDE. This can be done by drag-and-dropping the SDK archive into MCUXpresso IDE's _Installed SDKs_ tab:
+- Import the previously downloaded NXP SDK into MCUXpresso IDE. This can be
+  done by drag-and-dropping the SDK archive into MCUXpresso IDE's _Installed
+  SDKs_ tab:
 
 ![Installed_SDKS](../../../doc/img/k32w/installed_sdks.JPG)
 
-- Import OpenThread repo in MCUXpresso IDE as Makefile Project. Use _none_ as _Toolchain for Indexer Settings_:
+- Import OpenThread repo in MCUXpresso IDE as Makefile Project. Use _none_ as
+  _Toolchain for Indexer Settings_:
 
 ```
 File -> Import -> C/C++ -> Existing Code as Makefile Project
@@ -122,7 +141,8 @@ Right click on the Project -> Debug -> As->MCUXpresso IDE LinkServer (inc. CMSIS
 
 ![debug_1](../../../doc/img/k32w/debug_conf1.JPG)
 
-- Set the _Connect script_ for the debug configuration to _QN9090connect.scp_ from the dropdown list:
+- Set the _Connect script_ for the debug configuration to _QN9090connect.scp_
+  from the dropdown list:
 
 ```
 Right click on the Project -> Debug As -> Debug configurations... -> LinkServer Debugger
@@ -165,8 +185,12 @@ Right click on the Project -> Utilities -> Open Directory Browser here -> edit *
 
 ## Running the example
 
-1. Prepare two boards with the flashed `CLI Example` (as shown above). Make sure that the JN4 jumper is set to RX and the JN7 jumper is set to TX, connecting the LPC and JN UART0 pins.
-2. The CLI example uses UART connection. To view raw UART output, start a terminal emulator like PuTTY and connect to the used COM port with the following UART settings:
+1. Prepare two boards with the flashed `CLI Example` (as shown above). Make sure
+   that the JN4 jumper is set to RX and the JN7 jumper is set to TX, connecting
+   the LPC and JN UART0 pins.
+2. The CLI example uses UART connection. To view raw UART output, start a
+   terminal emulator like PuTTY and connect to the used COM port with the
+   following UART settings:
 
    - Baud rate: 115200
    - 8 data bits
@@ -192,7 +216,8 @@ Done
 Leader
 ```
 
-5. Open a terminal connection on the second board and attach a node to the network.
+5. Open a terminal connection on the second board and attach a node to the
+   network.
 
 ```bash
 > panid 0xabcd
@@ -227,6 +252,7 @@ fe80:0:0:0:5c91:c61:b67c:271c
 16 bytes from fdde:ad00:beef:0:0:ff:fe00:fc00: icmp_seq=1 hlim=64 time=8ms
 ```
 
-For a list of all available commands, visit [OpenThread CLI Reference README.md][cli].
+For a list of all available commands, visit [OpenThread CLI Reference
+README.md][cli].
 
 [cli]: https://github.com/openthread/openthread/blob/main/src/cli/README.md

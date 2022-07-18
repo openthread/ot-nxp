@@ -30,6 +30,7 @@
 set -exo pipefail
 
 OT_CMAKE_NINJA_TARGET=${OT_CMAKE_NINJA_TARGET:-}
+BUILD_DIR="${OT_CMAKE_BUILD_DIR:-build_k32w061}"
 
 readonly OT_SRCDIR="$(pwd)"
 readonly OT_OPTIONS=(
@@ -43,24 +44,42 @@ readonly OT_OPTIONS_RCP_ONLY_UART_FLOW_CONTROL=(
     "-DOT_APP_CLI=OFF"
     "-DOT_FTD=OFF"
     "-DOT_MTD=OFF"
+    "-DOT_1_2_SUPPORT=ON"
+)
+readonly OT_OPTIONS_RCP_ONLY_SPI=(
+    "-DOT_NCP_SPI=ON"
+    "-DOT_APP_CLI=OFF"
+    "-DOT_FTD=OFF"
+    "-DOT_MTD=OFF"
+    "-DOT_1_2_SUPPORT=ON"
 )
 readonly OT_OPTIONS_NO_RCP=(
     "-DOT_APP_NCP=OFF"
     "-DOT_APP_RCP=OFF"
     "-DOT_RCP=OFF"
+    "-DOT_1_2_SUPPORT=ON"
+    "-DOT_MAC_CSL_RECEIVER_ENABLE=ON"
 )
+
+sign()
+{
+    if [ "$SDK_RELEASE" == "ON" ]; then
+        "$NXP_K32W0_SDK_ROOT"/tools/imagetool/sign_images.sh "$1"
+    else
+        "$NXP_K32W0_SDK_ROOT"/middleware/wireless/openthread/boards/dk6_jn5189/enablement/sign_images.sh "$1" "$NXP_K32W0_SDK_ROOT"/tools/imagetool
+    fi
+}
 
 build()
 {
-    local builddir="${OT_CMAKE_BUILD_DIR:-build_k32w061}"
     local cmakeArgs=("${@}")
-    mkdir -p "${builddir}"
-    cd "${builddir}"
-    if [ "$1" = "ot_rcp_only_uart_flow_control" ]; then
+    mkdir -p "${BUILD_DIR}"
+    cd "${BUILD_DIR}"
+    if [ ! "$1" = "folder_not_specified" ]; then
         cmakeArgs=("${@:2}")
-        rcp_folder_name="rcp_only_uart_flow_control"
-        mkdir -p ${rcp_folder_name}
-        cd ${rcp_folder_name}
+        rcp_folder_name="$1"
+        mkdir -p "${rcp_folder_name}"
+        cd "${rcp_folder_name}"
     fi
 
     # shellcheck disable=SC2068
@@ -72,61 +91,120 @@ build()
         ninja
     fi
 
-    if [ "$SDK_RELEASE" == "ON" ]; then
-        "$NXP_K32W061_SDK_ROOT"/tools/imagetool/sign_images.sh openthread/examples/apps/cli/
-        "$NXP_K32W061_SDK_ROOT"/tools/imagetool/sign_images.sh openthread/examples/apps/ncp/
-    else
-        "$NXP_K32W061_SDK_ROOT"/middleware/wireless/openthread/boards/dk6_jn5189/enablement/sign_images.sh openthread/examples/apps/cli/ "$NXP_K32W061_SDK_ROOT"/tools/imagetool
-        "$NXP_K32W061_SDK_ROOT"/middleware/wireless/openthread/boards/dk6_jn5189/enablement/sign_images.sh openthread/examples/apps/ncp/ "$NXP_K32W061_SDK_ROOT"/tools/imagetool
-    fi
-
     cd "${OT_SRCDIR}"
 }
 
-main()
+build_ot_rcp_only_uart_flow_control()
 {
-
-    # check if environmental variable NXP_K32W061_SDK_ROOT is set
-    #     if not, then use "../../../" as a possible path
-    # then  check if NXP_K32W061_SDK_ROOT contains a valid SDK
-    #     if SW-Content-Register.txt is found
-    #         then NXP_K32W061_SDK_ROOT points to a released SDK
-    #     else if .gitignore is found
-    #         then NXP_K32W061_SDK_ROOT points to a cloned repository
-
-    if [ -z "$NXP_K32W061_SDK_ROOT" ]; then
-        NXP_K32W061_SDK_ROOT="../../../"
-    fi
-
-    if [ -f $NXP_K32W061_SDK_ROOT/SW-Content-Register.txt ]; then
-        SDK_RELEASE=ON
-    elif [ -f $NXP_K32W061_SDK_ROOT/.gitmodules ]; then
-        SDK_RELEASE=OFF
-    else
-        echo "Could not found a valid SDK package!"
-        return
-    fi
-
-    echo "NXP_K32W061_SDK_ROOT set to " $NXP_K32W061_SDK_ROOT
-
-    echo "Building OT RCP image ..."
-    local options=("ot_rcp_only_uart_flow_control")
+    echo "Building OT RCP image UART with flow control..."
+    app_folder_name="rcp_only_uart_flow_control"
+    local options=("${app_folder_name}")
     options+=("${OT_OPTIONS_RCP_ONLY_UART_FLOW_CONTROL[@]}")
     options+=("${OT_OPTIONS[@]}")
     options+=("$@")
     options+=(" -DSDK_RELEASE=$SDK_RELEASE")
     build "${options[@]}"
 
+    #Sign the image
+    sign "${BUILD_DIR}/${app_folder_name}/openthread/examples/apps/ncp/"
+
     if [ $? -eq 1 ]; then
         exit 1
     fi
+}
 
-    echo "Building OT without RCP image ..."
-    options=("${OT_OPTIONS_NO_RCP[@]}")
+build_ot_rcp_only_spi()
+{
+    echo "Building OT RCP image SPI..."
+    app_folder_name="rcp_only_spi"
+    local options=("${app_folder_name}")
+    options+=("${OT_OPTIONS_RCP_ONLY_SPI[@]}")
     options+=("${OT_OPTIONS[@]}")
     options+=("$@")
     options+=(" -DSDK_RELEASE=$SDK_RELEASE")
     build "${options[@]}"
+
+    #Sign the image
+    sign "${BUILD_DIR}/${app_folder_name}/openthread/examples/apps/ncp/"
+
+    if [ $? -eq 1 ]; then
+        exit 1
+    fi
+}
+
+build_ot_without_rcp_image()
+{
+    echo "Building OT without RCP image ..."
+    app_folder_name="folder_not_specified"
+    local options=("${app_folder_name}")
+    options+=("${OT_OPTIONS_NO_RCP[@]}")
+    options+=("${OT_OPTIONS[@]}")
+    options+=("$@")
+
+    options+=(" -DSDK_RELEASE=$SDK_RELEASE")
+
+    build "${options[@]}"
+
+    #Sign the image
+    sign "${BUILD_DIR}/openthread/examples/apps/cli/"
+
+    if [ $? -eq 1 ]; then
+        exit 1
+    fi
+}
+
+create_directory_and_build()
+{
+    if [ "$1" == 'all' ]; then
+        build_ot_rcp_only_uart_flow_control "$@"
+        build_ot_rcp_only_spi "$@"
+        build_ot_without_rcp_image "$@"
+
+    elif [ "$1" == 'ot_rcp_only_uart_flow_control' ]; then
+        build_ot_rcp_only_uart_flow_control "$@"
+    elif [ "$1" == 'ot_rcp_only_spi' ]; then
+        build_ot_rcp_only_spi "$@"
+    elif [ "$1" == 'ot_without_rcp_image' ]; then
+        build_ot_without_rcp_image "$@"
+    else
+        echo >&2 "Unsupported action: $1. Supported: all, ot_rcp_only_uart_flow_control, ot_rcp_only_spi, ot_without_rcp_image"
+        # 128 for Invalid arguments
+        exit 128
+    fi
+}
+
+main()
+{
+
+    # check if environmental variable NXP_K32W0_SDK_ROOT is set
+    #     if not, then use "../../../" as a possible path
+    # then  check if NXP_K32W0_SDK_ROOT contains a valid SDK
+    #     if SW-Content-Register.txt is found
+    #         then NXP_K32W0_SDK_ROOT points to a released SDK
+    #     else if .gitignore is found
+    #         then NXP_K32W0_SDK_ROOT points to a cloned repository
+
+    if [ -z "$NXP_K32W0_SDK_ROOT" ]; then
+        NXP_K32W0_SDK_ROOT="../../../"
+    fi
+
+    if [ -f $NXP_K32W0_SDK_ROOT/SW-Content-Register.txt ]; then
+        SDK_RELEASE=ON
+    elif [ -f $NXP_K32W0_SDK_ROOT/.gitmodules ]; then
+        SDK_RELEASE=OFF
+    else
+        echo "Could not found a valid SDK package!"
+        return
+    fi
+
+    echo "NXP_K32W0_SDK_ROOT set to " $NXP_K32W0_SDK_ROOT
+
+    if [ $# == 0 ]; then
+        create_directory_and_build all $SDK_RELEASE "$@"
+    else
+        create_directory_and_build "$1" $SDK_RELEASE "$@"
+    fi
+
 }
 
 main "$@"

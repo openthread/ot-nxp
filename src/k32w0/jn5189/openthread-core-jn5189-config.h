@@ -67,16 +67,6 @@
 #endif
 
 /**
- * @def RADIO_CONFIG_SRC_MATCH_ENTRY_NUM
- *
- * The number of source address table entries.
- *
- */
-#ifndef RADIO_CONFIG_SRC_MATCH_ENTRY_NUM
-#define RADIO_CONFIG_SRC_MATCH_ENTRY_NUM 128
-#endif
-
-/**
  * @def OPENTHREAD_CONFIG_NCP_HDLC_ENABLE
  *
  * Define to 1 to enable NCP HDLC support.
@@ -99,11 +89,12 @@
 /**
  * @def OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE
  *
- * The size of heap buffer when DTLS is enabled.
+ * The size of heap buffer when DTLS is enabled. From this pool, memory is allocated during
+ * commissioning and a smaller size will cause the process to fail with memory allocation error.
  *
  */
 #ifndef OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE
-#define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE (2048 * sizeof(void *))
+#define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE (4096 * sizeof(void *))
 #endif
 
 /**
@@ -204,6 +195,178 @@
  */
 #ifndef OPENTHREAD_CONFIG_MLE_MAX_CHILDREN
 #define OPENTHREAD_CONFIG_MLE_MAX_CHILDREN 30
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS
+ *
+ * The number of message buffers in the buffer pool. A large number of buffers is required for
+ * large networks or when sending/receiving large IPv6 packets.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS
+#define OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS 160
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MLE_LINK_METRICS_INITIATOR_ENABLE
+ *
+ * Define as 1 to enable Link Metrics initiator feature.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MLE_LINK_METRICS_INITIATOR_ENABLE
+#define OPENTHREAD_CONFIG_MLE_LINK_METRICS_INITIATOR_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MLE_LINK_METRICS_SUBJECT_ENABLE
+ *
+ * Define as 1 to enable Link Metrics subject feature.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MLE_LINK_METRICS_SUBJECT_ENABLE
+#define OPENTHREAD_CONFIG_MLE_LINK_METRICS_SUBJECT_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_DUA_ENABLE
+ *
+ * Define as 1 to support Thread 1.2 Domain Unicast Address feature.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_DUA_ENABLE
+#define OPENTHREAD_CONFIG_DUA_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MLR_ENABLE
+ *
+ * Define as 1 to support Thread 1.2 Multicast Listener Registration feature.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MLR_ENABLE
+#define OPENTHREAD_CONFIG_MLR_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+ *
+ * This setting configures the CSL receiver feature in Thread 1.2.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+#define OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
+ *
+ * Define to 1 if you want to enable microsecond backoff timer implemented in platform.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
+#define OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE 1
+#endif
+
+/* Required RCP capabilities. See radio_spinel_impl.hpp, CheckRadioCapabilities() */
+/**
+ * @def OPENTHREAD_CONFIG_MAC_SOFTWARE_ACK_TIMEOUT_ENABLE
+ *
+ * Define to 1 to enable software ACK timeout logic.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MAC_SOFTWARE_ACK_TIMEOUT_ENABLE
+#define OPENTHREAD_CONFIG_MAC_SOFTWARE_ACK_TIMEOUT_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MAC_SOFTWARE_RETRANSMIT_ENABLE
+ *
+ * Define to 1 to enable software retransmission logic.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MAC_SOFTWARE_RETRANSMIT_ENABLE
+#define OPENTHREAD_CONFIG_MAC_SOFTWARE_RETRANSMIT_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MAC_SOFTWARE_CSMA_BACKOFF_ENABLE
+ *
+ * Define to 1 to enable software CSMA-CA backoff logic.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MAC_SOFTWARE_CSMA_BACKOFF_ENABLE
+#define OPENTHREAD_CONFIG_MAC_SOFTWARE_CSMA_BACKOFF_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_SECURITY_ENABLE
+ *
+ * Define to 1 to enable software transmission security logic.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_SECURITY_ENABLE
+#define OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_SECURITY_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_TIMING_ENABLE
+ *
+ * Define to 1 to enable software transmission target time logic.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_TIMING_ENABLE
+#define OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_TIMING_ENABLE 1
+#endif
+
+/* CSL configuration parameters */
+/**
+ * @def OPENTHREAD_CONFIG_MAC_CSL_AUTO_SYNC_ENABLE
+ *
+ * This setting configures CSL auto synchronization based on data poll mechanism in Thread 1.2.
+ *
+ */
+#undef OPENTHREAD_CONFIG_MAC_CSL_AUTO_SYNC_ENABLE
+#define OPENTHREAD_CONFIG_MAC_CSL_AUTO_SYNC_ENABLE OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+
+/* The  accuracy, in units of +- ppm, of the clock used for scheduling CSL operations */
+#define CONFIG_PLATFORM_CSL_ACCURACY 100
+
+/* Should cover Rx tune time (warm-up) + us timer inaccuracy (it uses ticks ~= 30.5us) */
+/**
+ * @def OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD
+ *
+ * Reception scheduling and ramp up time needed for the CSL receiver to be ready, in units of microseconds.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD
+#define OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD 320
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_CSL_MIN_RECEIVE_ON
+ *
+ * The minimum CSL receive window (in microseconds) required to receive an IEEE 802.15.4 frame.
+ * - Maximum frame size with preamble: 6*2+127*2 symbols
+ * - AIFS: 12 symbols
+ * - Maximum ACK size with preamble: 6*2+39*2 symbols
+ * (destination PAN ID, extended destination/source address, CSL IE)
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_CSL_MIN_RECEIVE_ON
+#define OPENTHREAD_CONFIG_CSL_MIN_RECEIVE_ON 368 * 16
+#endif
+
+/* Should cover Tx tune time (warm-up) + encryption time +
+   us timer inaccuracy (it uses ticks ~= 30.5us) + RCP communication overhead */
+/**
+ * @def OPENTHREAD_CONFIG_MAC_CSL_REQUEST_AHEAD_US
+ *
+ * Define how many microseconds ahead should MAC deliver CSL frame to SubMac.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MAC_CSL_REQUEST_AHEAD_US
+#define OPENTHREAD_CONFIG_MAC_CSL_REQUEST_AHEAD_US 2000
 #endif
 
 #endif // OPENTHREAD_CORE_JN5189_CONFIG_H_

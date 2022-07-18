@@ -25,104 +25,66 @@
 #  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 #  POSSIBILITY OF SUCH DAMAGE.
 #
-list(APPEND OT_PLATFORM_DEFINES
-    "CPU_K32W061HN"
-    "CPU_JN518X"
-    "CPU_JN518X_REV=2"
-    "JENNIC_CHIP_FAMILY_JN518x"
-    "JENNIC_CHIP_FAMILY_NAME=_JN518x"
-    "USE_SDK_OSA=0"
-    "SDK_DEBUGCONSOLE=0"
-)
-
-list(APPEND OT_PUBLIC_DEFINES
-    -DCPU_K32W061HN
-    -DCPU_JN518X
-    -DCPU_JN518X_REV=2
-    -DJENNIC_CHIP_FAMILY_JN518x
-    -DJENNIC_CHIP_FAMILY_NAME=_JN518x
-    -Wno-unused-parameter
-    -Wno-expansion-to-defined
-)
-
-list(APPEND OT_PUBLIC_INCLUDES
-        "${PROJECT_SOURCE_DIR}/include/"
-        "${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/"
-        "${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/repo/"
-        "${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/repo/include/"
-        "$ENV{NXP_K32W061_SDK_ROOT}"
-        "$ENV{NXP_K32W061_SDK_ROOT}/CMSIS/Include/"
-        "$ENV{NXP_K32W061_SDK_ROOT}/components/serial_manager/"
-        "$ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061"
-        "$ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/drivers/"
-        "$ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/utilities/"
-        "$ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/utilities/debug-console/"
-        "$ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/utilities/debug_console/"
-        "$ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/utilities/str/"
-        "$ENV{NXP_K32W061_SDK_ROOT}/drivers/components/uart/"
-        "$ENV{NXP_K32W061_SDK_ROOT}/middleware/mbedtls/port/ksdk/"
-        "$ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/ieee-802.15.4/uMac/Include"
-        "$ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/Common/"
-        "$ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/Lists"
-        "$ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/MemManager/Interface"
-        "$ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/PDM/Include"
-        "$ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/SerialManager/Interface"
-        "$ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/TimersManager/Source/"
-        "$ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6"
-        "$ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6/Build/Include"
-)
-
-if (SDK_RELEASE)
-    list(APPEND OT_PUBLIC_INCLUDES
-        "$ENV{NXP_K32W061_SDK_ROOT}/boards/k32w061dk6/wireless_examples/openthread/enablement"
-    )
-else()
-    list(APPEND OT_PUBLIC_INCLUDES
-        "$ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/openthread/boards/dk6_jn5189/enablement"
-        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/aes"
-        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/common"
-        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/ctimer"
-        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/flexcomm"
-        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/jn_flash"
-        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/jn_iocon"
-        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/jn_rng"
-        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/lpc_adc"
-        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/lpc_gpio"
-        "$ENV{NXP_K32W061_SDK_ROOT}/platform/drivers/sha"
-        "$ENV{NXP_K32W061_SDK_ROOT}/platform/utilities/debug_console"
-    )
-endif()
 
 set(K32W0_COMM_SOURCES
+    ${PROJECT_SOURCE_DIR}/src/common/ram_storage.c
+    platform/flash_pdm.c
+    platform/pdm_ram_storage_glue.c
     platform/alarm.c
     platform/diag.c
     platform/entropy.c
     platform/flash.c
     platform/logging.c
     platform/misc.c
-    platform/radio.c
-    platform/settings_k32w.c
     platform/system.c
     platform/uart.c
-    $ENV{NXP_K32W061_SDK_ROOT}/middleware/mbedtls/port/ksdk/aes_alt.c
-    $ENV{NXP_K32W061_SDK_ROOT}/middleware/mbedtls/port/ksdk/ksdk_mbedtls.c
+    $ENV{NXP_K32W0_SDK_ROOT}/middleware/mbedtls/port/ksdk/aes_alt.c
+    $ENV{NXP_K32W0_SDK_ROOT}/middleware/mbedtls/port/ksdk/ksdk_mbedtls.c
 )
 
-if (SDK_RELEASE)
+list(APPEND OT_PUBLIC_INCLUDES
+        "${PROJECT_SOURCE_DIR}/include/"
+        "${PROJECT_SOURCE_DIR}/src/common"
+        "${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/"
+        "${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/repo/"
+        "${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/repo/include/"
+)
+
+if (OT_1_2_SUPPORT)
     list(APPEND K32W0_COMM_SOURCES
-        $ENV{NXP_K32W061_SDK_ROOT}/devices/K32W061/utilities/fsl_assert.c
+        platform/radio.c
     )
+
+    if (NOT OT_MAC_CSL_RECEIVER_ENABLE)
+        # disable CSL receiver for now
+        list(APPEND OT_PLATFORM_DEFINES
+            OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE=0
+        )
+    endif()
 else()
     list(APPEND K32W0_COMM_SOURCES
-        $ENV{NXP_K32W061_SDK_ROOT}/platform/utilities/assert/fsl_assert.c
+        platform/radio_v1.c
+    )
+
+    # disable all OT 1.2 specifics
+    list(APPEND OT_PLATFORM_DEFINES
+            OPENTHREAD_CONFIG_MLE_LINK_METRICS_INITIATOR_ENABLE=0
+            OPENTHREAD_CONFIG_MLE_LINK_METRICS_SUBJECT_ENABLE=0
+            OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE=0
+            OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_SECURITY_ENABLE=0
+            OPENTHREAD_CONFIG_MAC_SOFTWARE_TX_TIMING_ENABLE=0
+            OPENTHREAD_CONFIG_MLE_LINK_METRICS_INITIATOR_ENABLE=0
     )
 endif()
 
-set(K32W0_LIBS
-    $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/ieee-802.15.4/lib/libMiniMac.a
-    $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/PDM/Library/libPDM.a
-    $ENV{NXP_K32W061_SDK_ROOT}/middleware/wireless/framework/XCVR/lib/libRadio.a
-)
+if (OT_NCP_SPI)
+    list(APPEND K32W0_COMM_SOURCES
+        platform/spi_slave.c
+    )
+    list(APPEND OT_PLATFORM_DEFINES
+        "OT_PLAT_SPI_SUPPORT"
+    )
+endif()
 
 set(K32W0_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/src
