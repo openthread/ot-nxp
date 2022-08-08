@@ -260,7 +260,9 @@ LOG_MODULE_DEFINE(ot_stack_log, kLOG_LevelDebug)
  * Enable Ping sender functionnality
  *
  */
+#ifndef OPENTHREAD_CONFIG_PING_SENDER_ENABLE
 #define OPENTHREAD_CONFIG_PING_SENDER_ENABLE 1
+#endif
 
 /**
  * @def OPENTHREAD_CONFIG_THREAD_VERSION
