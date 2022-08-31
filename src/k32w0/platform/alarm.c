@@ -355,6 +355,10 @@ uint32_t otPlatAlarmMicroGetNow(void)
 
 uint64_t otPlatTimeGet(void)
 {
+    OSA_InterruptDisable();
+
+    uint64_t us_tstp = 0;
+
     /* Make the us timestamp wrap around on 64-bit */
     uint32_t tstp = Timestamp_GetCounter32bit();
 
@@ -364,6 +368,9 @@ uint64_t otPlatTimeGet(void)
         tstp_ovf += OVF_32bit_US;
     }
     prev_tstp = tstp;
+    us_tstp   = TICKS32kHz_TO_USEC(tstp) + tstp_ovf;
 
-    return TICKS32kHz_TO_USEC(tstp) + tstp_ovf;
+    OSA_InterruptEnable();
+
+    return us_tstp;
 }
