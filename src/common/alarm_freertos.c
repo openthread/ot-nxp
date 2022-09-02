@@ -105,18 +105,19 @@ uint64_t otPlatTimeGet(void)
 void otPlatAlarmMilliStartAt(otInstance *aInstance, uint32_t aT0, uint32_t aDt)
 {
     OT_UNUSED_VARIABLE(aInstance);
-    uint32_t now           = otPlatAlarmMilliGetNow();
-    uint32_t remainingTime = 0;
-    bool     startTimer    = false;
+    uint32_t now;
+    uint32_t nextExpiryTime = 0;
+    bool     startTimer     = false;
     OT_PLAT_DBG("aT0 %d duration = %d", aT0, aDt);
+    xSemaphoreTake(mutexHandle, portMAX_DELAY);
+    now = otPlatAlarmMilliGetNow();
     if (aT0 + aDt > now)
     {
-        xSemaphoreTake(mutexHandle, portMAX_DELAY);
         if (xTimerIsTimerActive(alarmTimer))
         {
-            remainingTime = ALARM_TIMER_TICKS_2_MS(xTimerGetExpiryTime(alarmTimer));
+            nextExpiryTime = ALARM_TIMER_TICKS_2_MS(xTimerGetExpiryTime(alarmTimer));
 
-            if ((aT0 + aDt - now) < (remainingTime))
+            if ((aT0 + aDt) < (nextExpiryTime))
             {
                 startTimer = true;
             }
@@ -134,6 +135,7 @@ void otPlatAlarmMilliStartAt(otInstance *aInstance, uint32_t aT0, uint32_t aDt)
     }
     else
     {
+        xSemaphoreGive(mutexHandle);
         alarmTimerCallback(NULL);
     }
 }
