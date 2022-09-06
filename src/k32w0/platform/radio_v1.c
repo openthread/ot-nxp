@@ -89,8 +89,11 @@ extern void BOARD_GetCoexIoCfg(void **rfDeny, void **rfActive, void **rfStatus);
 #define SYMBOLS_TO_US(symbols) ((symbols)*US_PER_SYMBOL)
 #define US_TO_MILI_DIVIDER (1000)
 
-#define MAX_FP_ADDRS (10)   /* max number of frame pending children */
-#define K32W_RX_BUFFERS (8) /* max number of RX buffers */
+#define MAX_FP_ADDRS (10) /* max number of frame pending children */
+
+#ifndef K32W0_RADIO_NUM_OF_RX_BUFS
+#define K32W0_RADIO_NUM_OF_RX_BUFS (8) /* max number of RX buffers */
+#endif
 
 /* check IEEE Std. 802.15.4 - 2015: Table 8-81 - MAC sublayer constants */
 #define MAC_TX_RETRIES (3)
@@ -120,7 +123,7 @@ typedef struct
 
 typedef struct
 {
-    tsRxFrameFormat *buffer[K32W_RX_BUFFERS];
+    tsRxFrameFormat *buffer[K32W0_RADIO_NUM_OF_RX_BUFS];
     uint8_t          head;
     uint8_t          tail;
     bool             isFull;
@@ -214,12 +217,12 @@ static uint16_t         sFpShortAddrMask;           /* Mask - sFpShortAddr valid
 static fpNeighExtAddr sFpExtAddr[MAX_FP_ADDRS]; /* Frame Pending extended addresses array */
 static uint16_t       sFpExtAddrMask;           /* Mask - sFpExtAddr is valid */
 
-static rxRingBuffer     sRxRing;                       /* Receive Ring Buffer */
-static tsRxFrameFormat  sRxFrame[K32W_RX_BUFFERS];     /* RX Buffers */
-static tsRxFrameFormat *sRxFrameInProcess;             /* RX Frame currently in processing */
-static bool_t           sIsRxDisabled;                 /* TRUE if RX was disabled due to no RX bufs */
-static uint8_t          sRxFrameIndex;                 /* Index tracking the sRxFrame array */
-static teRxOption       sRxOpt = E_MMAC_RX_START_NOW | /* RX Options */
+static rxRingBuffer     sRxRing;                              /* Receive Ring Buffer */
+static tsRxFrameFormat  sRxFrame[K32W0_RADIO_NUM_OF_RX_BUFS]; /* RX Buffers */
+static tsRxFrameFormat *sRxFrameInProcess;                    /* RX Frame currently in processing */
+static bool_t           sIsRxDisabled;                        /* TRUE if RX was disabled due to no RX bufs */
+static uint8_t          sRxFrameIndex;                        /* Index tracking the sRxFrame array */
+static teRxOption       sRxOpt = E_MMAC_RX_START_NOW |        /* RX Options */
                            E_MMAC_RX_ALIGN_NORMAL | E_MMAC_RX_USE_AUTO_ACK | E_MMAC_RX_NO_MALFORMED |
                            E_MMAC_RX_NO_FCS_ERROR | E_MMAC_RX_ADDRESS_MATCH;
 
@@ -278,7 +281,7 @@ void App_SetCustomEui64(uint8_t *aIeeeEui64)
 void K32WRadioInit(void)
 {
     /* RX initialization */
-    memset(sRxFrame, 0, sizeof(tsRxFrameFormat) * K32W_RX_BUFFERS);
+    memset(sRxFrame, 0, sizeof(tsRxFrameFormat) * K32W0_RADIO_NUM_OF_RX_BUFS);
     sRxFrameIndex = 0;
 
     /* TX initialization */
@@ -840,7 +843,7 @@ static void K32WISR(uint32_t u32IntBitmap)
             if (u32IntBitmap & E_MMAC_INT_RX_HEADER)
             {
                 /* go back one index from current frame index */
-                pRxFrame = &sRxFrame[(sRxFrameIndex + K32W_RX_BUFFERS - 1) % K32W_RX_BUFFERS];
+                pRxFrame = &sRxFrame[(sRxFrameIndex + K32W0_RADIO_NUM_OF_RX_BUFS - 1) % K32W0_RADIO_NUM_OF_RX_BUFS];
 
                 /* FP processing first */
                 K32WProcessMacHeader(pRxFrame);
@@ -1262,10 +1265,10 @@ static void K32WPushRxRingBuffer(rxRingBuffer *aRxRing, tsRxFrameFormat *aRxFram
     aRxRing->buffer[aRxRing->head] = aRxFrame;
     if (aRxRing->isFull)
     {
-        aRxRing->tail = (aRxRing->tail + 1) % K32W_RX_BUFFERS;
+        aRxRing->tail = (aRxRing->tail + 1) % K32W0_RADIO_NUM_OF_RX_BUFS;
     }
 
-    aRxRing->head   = (aRxRing->head + 1) % K32W_RX_BUFFERS;
+    aRxRing->head   = (aRxRing->head + 1) % K32W0_RADIO_NUM_OF_RX_BUFS;
     aRxRing->isFull = (aRxRing->head == aRxRing->tail);
 }
 
@@ -1289,7 +1292,7 @@ static tsRxFrameFormat *K32WPopRxRingBuffer(rxRingBuffer *aRxRing)
     {
         rxFrame         = aRxRing->buffer[aRxRing->tail];
         aRxRing->isFull = FALSE;
-        aRxRing->tail   = (aRxRing->tail + 1) % K32W_RX_BUFFERS;
+        aRxRing->tail   = (aRxRing->tail + 1) % K32W0_RADIO_NUM_OF_RX_BUFS;
     }
     OSA_InterruptEnable();
 
@@ -1328,7 +1331,7 @@ static tsRxFrameFormat *K32WGetFrame(tsRxFrameFormat *aRxFrame, uint8_t *aRxFram
     frame = &aRxFrame[*aRxFrameIndex];
     if (frame != sRxFrameInProcess)
     {
-        *aRxFrameIndex = (*aRxFrameIndex + 1) % K32W_RX_BUFFERS;
+        *aRxFrameIndex = (*aRxFrameIndex + 1) % K32W0_RADIO_NUM_OF_RX_BUFS;
     }
     else
     {
