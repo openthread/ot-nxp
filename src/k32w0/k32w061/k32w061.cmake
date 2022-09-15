@@ -26,6 +26,8 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
+set(UART_BAUD_RATE "115200" CACHE STRING "Uart baud rate")
+
 target_compile_definitions(ot-config INTERFACE
     "MBEDTLS_USER_CONFIG_FILE=\"k32w061-mbedtls-config.h\""
     "MBEDTLS_CONFIG_FILE=\"mbedtls-config.h\"" 
@@ -74,6 +76,7 @@ target_link_libraries(ot-config
 target_compile_definitions(openthread-k32w061
     PUBLIC
         ${OT_PLATFORM_DEFINES}
+        OT_PLAT_UART_BAUD_RATE=${UART_BAUD_RATE}
 )
 
 target_include_directories(openthread-k32w061
