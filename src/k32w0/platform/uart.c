@@ -71,8 +71,14 @@
 #define FLUSH_TO 500 /* ms*/
 
 #ifndef OT_PLAT_UART_RX_BUFFER_SIZE
-#define OT_PLAT_UART_RX_BUFFER_SIZE 256
+/*
+ * Always make sure that OT_PLAT_UART_RX_BUFFER_SIZE is smaller (or equal) than the serial manager rx ring buffer.
+ * In fact there is a risk to not re-schedule the serial manager task if there is more byte in the rx ring buffer than
+ * what SerialMngr_RxCbApp could read.
+ */
+#define OT_PLAT_UART_RX_BUFFER_SIZE gSerialMgrRxBufSize_c
 #endif
+
 #ifndef OT_PLAT_UART_BAUD_RATE
 #define OT_PLAT_UART_BAUD_RATE 115200
 #endif
