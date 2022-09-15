@@ -36,16 +36,11 @@ on:
     branches:
       - 'main'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || (github.repository == 'openthread/ot-nxp' && github.run_id) || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-
-  cancel-previous-runs:
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: rokroskar/workflow-run-cleanup-action@master
-      env:
-        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-      if: "github.ref != 'refs/heads/main'"
-
   pretty:
     runs-on: ubuntu-20.04
     steps:
@@ -61,6 +56,7 @@ jobs:
     - name: Check
       run: |
         script/make-pretty check
+
   arm-gcc:
     name: arm-gcc-${{ matrix.gcc_ver }}
     runs-on: ubuntu-22.04
@@ -122,8 +118,7 @@ jobs:
         cd /tmp
         git clone https://github.com/NXPmicro/mcux-sdk.git
         cp -r mcux-sdk/devices/MIMXRT1062/gcc sdk_rt1060/sdks/devices/MIMXRT1062/
- 
-        
+         
     - name: Build
       run: |
         export PATH=/tmp/${{ matrix.gcc_extract_dir }}/bin:$PATH
