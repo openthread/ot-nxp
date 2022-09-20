@@ -327,7 +327,7 @@
  *
  */
 #undef OPENTHREAD_CONFIG_MAC_CSL_AUTO_SYNC_ENABLE
-#define OPENTHREAD_CONFIG_MAC_CSL_AUTO_SYNC_ENABLE OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+#define OPENTHREAD_CONFIG_MAC_CSL_AUTO_SYNC_ENABLE 0
 
 /* The  accuracy, in units of +- ppm, of the clock used for scheduling CSL operations */
 #define CONFIG_PLATFORM_CSL_ACCURACY 100
@@ -340,7 +340,7 @@
  *
  */
 #ifndef OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD
-#define OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD 320
+#define OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD 1920
 #endif
 
 /**
@@ -369,4 +369,74 @@
 #define OPENTHREAD_CONFIG_MAC_CSL_REQUEST_AHEAD_US 2000
 #endif
 
+/* Thread 1.3 configuration flags */
+/**
+ * @def OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
+ *
+ * Define to 1 to enable DNS Client support.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
+#define OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE
+ *
+ * Define to 1 to enable DNS-SD Server support.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE
+#define OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+ *
+ * Define to 1 to enable SRP Client support.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
+#define OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
+ *
+ * Define to 1 to enable SRP Server support.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
+#define OPENTHREAD_CONFIG_SRP_SERVER_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
+ *
+ * Define to 1 to support injecting Service entries into the Thread Network Data.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
+#define OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_ECDSA_ENABLE
+ *
+ * Define to 1 to enable ECDSA support.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_ECDSA_ENABLE
+#define OPENTHREAD_CONFIG_ECDSA_ENABLE 1
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+ *
+ * Define to 1 to enable Thread Test Harness reference device support.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+#define OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE 1
+#endif
 #endif // OPENTHREAD_CORE_JN5189_CONFIG_H_

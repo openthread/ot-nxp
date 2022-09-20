@@ -92,11 +92,10 @@ jobs:
         cmake --version | grep 3.10.3
         sudo pip3 install pycrypto
         sudo pip3 install pycryptodome
-        mkdir -p sdk_k32w061 
-        cd sdk_k32w061
-        wget https://cache.nxp.com/lgfiles/bsps/SDK_2_6_6_K32W061DK6.zip
-        unzip SDK_2_6_6_K32W061DK6.zip
-        rm -rf SDK_2_6_6_K32W061DK6.zip
+        wget https://cache.nxp.com/lgfiles/bsps/SDK_2_6_7_K32W061DK6.zip
+        unzip SDK_2_6_7_K32W061DK6.zip
+        rm -rf SDK_2_6_7_K32W061DK6.zip
+        mv -f SDK_2_6_7_K32W061DK6 sdk_k32w061
         cd /tmp
         mkdir -p sdk_jn5189
         cd sdk_jn5189

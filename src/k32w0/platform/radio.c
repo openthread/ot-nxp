@@ -93,7 +93,9 @@ extern void BOARD_GetCoexIoCfg(void **rfDeny, void **rfActive, void **rfStatus);
 #define SYMBOLS_TO_US(symbols) ((symbols)*US_PER_SYMBOL)
 #define US_TO_MILI_DIVIDER (1000)
 
-#define MAX_FP_ADDRS (10)   /* max number of frame pending children */
+/* max number of SED children <= the size of address mask variable(s) */
+#define MAX_FP_ADDRS MIN(OPENTHREAD_CONFIG_MLE_MAX_CHILDREN, 64)
+
 #define K32W_RX_BUFFERS (8) /* max number of RX buffers */
 
 /* check IEEE Std. 802.15.4 - 2015: Table 8-81 - MAC sublayer constants */
@@ -101,6 +103,8 @@ extern void BOARD_GetCoexIoCfg(void **rfDeny, void **rfActive, void **rfStatus);
 #define MAC_TX_CSMA_MIN_BE (3)
 #define MAC_TX_CSMA_MAX_BE (5)
 #define MAC_TX_CSMA_MAX_BACKOFFS (4)
+
+#define TX_TO 544 /* symbols. 2 max length frames + AIFS */
 
 #define CSL_UNCERT 32 ///< The Uncertainty of the scheduling CSL of transmission by the parent, in ±10 us units.
 
@@ -213,12 +217,14 @@ static void    K32WGetVsIeGen(void *t, uint8_t *b);
 
 /* Private variables declaration */
 static otRadioState sState = OT_RADIO_STATE_DISABLED;
-static otInstance * sInstance;    /* Saved OT Instance */
-static int8_t       sTxPwrLevel;  /* Default power is 0 dBm */
-static uint8_t      sChannel = 0; /* Default channel - must be invalid so it
-                                     updates the first time it is set */
-static bool_t    sIsFpEnabled;    /* Frame Pending enabled? */
-static uint16_t  sPanId;          /* PAN ID currently in use */
+static otInstance * sInstance;     /* Saved OT Instance */
+static int8_t       sTxPwrLevel;   /* Default power is 0 dBm */
+static uint8_t      sChannel = 0;  /* Default channel - must be invalid so it
+                                      updates the first time it is set */
+static bool_t sIsFpEnabled = TRUE; /* Enable address match so FP=0 for SED.
+                                      Address match is disabled only when address table is full.
+                                      See SourceMatchController::AddEntry() */
+static uint16_t  sPanId;           /* PAN ID currently in use */
 static uint16_t  sShortAddress;
 static tsExtAddr sExtAddress;
 static uint64_t  sCustomExtAddr = 0;
@@ -229,10 +235,10 @@ static otExtAddress sRevExtAddr;
 #endif
 
 static fpNeighShortAddr sFpShortAddr[MAX_FP_ADDRS]; /* Frame Pending short addresses array */
-static uint16_t         sFpShortAddrMask;           /* Mask - sFpShortAddr valid entries */
+static uint64_t         sFpShortAddrMask;           /* Mask - sFpShortAddr valid entries */
 
 static fpNeighExtAddr sFpExtAddr[MAX_FP_ADDRS]; /* Frame Pending extended addresses array */
-static uint16_t       sFpExtAddrMask;           /* Mask - sFpExtAddr is valid */
+static uint64_t       sFpExtAddrMask;           /* Mask - sFpExtAddr is valid */
 
 static rxRingBuffer      sRxRing;                       /* Receive Ring Buffer */
 static rxRingBufferEntry sRxFrame[K32W_RX_BUFFERS];     /* RX Buffers */
@@ -484,12 +490,16 @@ otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    otError      error            = OT_ERROR_NONE;
-    bool_t       isNewFrameNeeded = TRUE;
-    otRadioState tempState        = sState;
+    otError error = OT_ERROR_NONE;
 
     otEXPECT_ACTION(((sState != OT_RADIO_STATE_TRANSMIT) && (sState != OT_RADIO_STATE_DISABLED)),
                     error = OT_ERROR_INVALID_STATE);
+
+    /* Already in Rx on the same channel */
+    otEXPECT((sChannel != aChannel) || (OT_RADIO_STATE_RECEIVE != sState));
+
+    /* stop the radio */
+    vMMAC_RadioToOffAndWait();
 
     /* prevent multiple calls to the allow to sleep callback */
     if (TRUE == sAllowDeviceToSleep)
@@ -502,27 +512,17 @@ otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel)
     /* Check if the channel needs to be changed */
     if (sChannel != aChannel)
     {
+        /* The state is set to sleep to prevent an Rx restart.
+         * This might happen when the channel is switched
+         * in the middle of a receive operation */
+        sState   = OT_RADIO_STATE_SLEEP;
         sChannel = aChannel;
 
-        /* The state is set to sleep to prevent a lockup caused by an RX interrup firing during
-         * the radio off command called inside set channel and power */
-        sState = OT_RADIO_STATE_SLEEP;
         vMMAC_SetChannelAndPower(sChannel, sTxPwrLevel);
-        sState = tempState;
     }
 
-    if (OT_RADIO_STATE_RECEIVE != sState)
-    {
-        sState = OT_RADIO_STATE_RECEIVE;
-    }
-    else
-    {
-        /* this might happen when the channel is switched
-         * in the middle of a receive operation */
-        isNewFrameNeeded = FALSE;
-    }
-
-    K32WEnableReceive(isNewFrameNeeded);
+    sState = OT_RADIO_STATE_RECEIVE;
+    K32WEnableReceive(TRUE);
 
 exit:
     return error;
@@ -666,7 +666,27 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
     teTxOption eOptions = E_MMAC_TX_USE_AUTO_ACK;
     uint32_t   txTime   = 0;
 
-    otEXPECT_ACTION(OT_RADIO_STATE_RECEIVE == sState, error = OT_ERROR_INVALID_STATE);
+    otEXPECT_ACTION((OT_RADIO_STATE_SLEEP == sState) || (OT_RADIO_STATE_RECEIVE == sState),
+                    error = OT_ERROR_INVALID_STATE);
+
+    /* wait for Rx to finish */
+    txTime = u32MMAC_GetTime();
+
+    while (v2MAC_is_rx_ongoing() && ((u32MMAC_GetTime() - txTime) < TX_TO))
+    {
+    }
+    txTime = 0;
+
+    /* stop the radio */
+    vMMAC_RadioToOffAndWait();
+
+    /* prevent multiple calls to the allow to sleep callback */
+    if (TRUE == sAllowDeviceToSleep)
+    {
+        App_DisallowDeviceToSleep();
+        sAllowDeviceToSleep = FALSE;
+        RADIO_LOG("App_DisallowDeviceToSleep");
+    }
 
     /* go to TX state */
     sState    = OT_RADIO_STATE_TRANSMIT;
@@ -709,6 +729,19 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
     if (aFrame->mInfo.mTxInfo.mCsmaCaEnabled)
     {
         eOptions |= E_MMAC_TX_USE_CCA;
+    }
+
+    if (eOptions & E_MMAC_TX_USE_CCA)
+    {
+        if ((eOptions & E_MMAC_TX_DELAY_START) == E_MMAC_TX_DELAY_START)
+        {
+            /* No retransmissions, just 1 CCA */
+            vMMAC_SetTxParameters(1, 0, 0, 0);
+        }
+        else
+        {
+            vMMAC_SetTxParameters(1, MAC_TX_CSMA_MIN_BE, MAC_TX_CSMA_MAX_BE, aFrame->mInfo.mTxInfo.mMaxCsmaBackoffs);
+        }
     }
 
     /* frame conversion. aOtFrame is sTxOtFrame */
@@ -795,11 +828,11 @@ otRadioCaps otPlatRadioGetCaps(otInstance *aInstance)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    return OT_RADIO_CAPS_ACK_TIMEOUT
+    return OT_RADIO_CAPS_ACK_TIMEOUT | OT_RADIO_CAPS_CSMA_BACKOFF |
+           OT_RADIO_CAPS_SLEEP_TO_TX
 #if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
            /* MAC doesn't support enc/dec. It uses K32WEncFrame() callback */
            | OT_RADIO_CAPS_TRANSMIT_SEC | OT_RADIO_CAPS_TRANSMIT_TIMING
-    // | OT_RADIO_CAPS_SLEEP_TO_TX
 #endif
         ;
 }
@@ -921,43 +954,6 @@ static void K32WISR(uint32_t u32IntBitmap)
 
     switch (sState)
     {
-    case OT_RADIO_STATE_RECEIVE:
-
-        /* no rx errors */
-        if (0 == u32V2MAC_GetRxErrors())
-        {
-            if (u32IntBitmap & E_MMAC_INT_RX_HEADER)
-            {
-                /* This event doesn't mean end of reception */
-
-                /* go back one index from current frame index */
-                rbe = &sRxFrame[(sRxFrameIndex + K32W_RX_BUFFERS - 1) % K32W_RX_BUFFERS];
-
-                /* FP processing first */
-                K32WProcessMacHeader(&rbe->f);
-            }
-            else if (u32IntBitmap & E_MMAC_INT_RX_COMPLETE)
-            {
-                /* go back one index from current frame index */
-                rbe = &sRxFrame[(sRxFrameIndex + K32W_RX_BUFFERS - 1) % K32W_RX_BUFFERS];
-
-                /* Get rx info for frame */
-                K32WGetRxFrameInfo(rbe);
-
-                /* RX interrupt fired so it's safe to consume the frame */
-                K32WPushRxRingBuffer(&sRxRing, rbe);
-
-                K32WEnableReceive(TRUE);
-            }
-        }
-        else
-        {
-            /* restart RX and keep same buffer as data received contains errors */
-            K32WEnableReceive(FALSE);
-        }
-
-        BOARD_LedDongleToggle();
-        break;
     case OT_RADIO_STATE_TRANSMIT:
 
         if (u32IntBitmap & E_MMAC_INT_TX_COMPLETE)
@@ -1001,10 +997,42 @@ static void K32WISR(uint32_t u32IntBitmap)
             BOARD_LedDongleToggle();
             sState = OT_RADIO_STATE_RECEIVE;
             K32WEnableReceive(TRUE);
+            break;
         }
-        break;
 
     default:
+        if (u32IntBitmap & E_MMAC_INT_RX_HEADER)
+        {
+            /* This event doesn't mean end of reception */
+
+            /* go back one index from current frame index */
+            rbe = &sRxFrame[(sRxFrameIndex + K32W_RX_BUFFERS - 1) % K32W_RX_BUFFERS];
+
+            /* FP processing first */
+            K32WProcessMacHeader(&rbe->f);
+        }
+
+        if (u32IntBitmap & E_MMAC_INT_RX_COMPLETE)
+        {
+            if (0 == u32V2MAC_GetRxErrors())
+            {
+                /* go back one index from current frame index */
+                rbe = &sRxFrame[(sRxFrameIndex + K32W_RX_BUFFERS - 1) % K32W_RX_BUFFERS];
+
+                /* Get rx info for frame */
+                K32WGetRxFrameInfo(rbe);
+
+                /* RX interrupt fired so it's safe to consume the frame */
+                K32WPushRxRingBuffer(&sRxRing, rbe);
+            }
+
+            if (OT_RADIO_STATE_RECEIVE == sState)
+            {
+                /* restart Rx and keep same buffer if Rx failed */
+                K32WEnableReceive(0 == u32V2MAC_GetRxErrors());
+            }
+            BOARD_LedDongleToggle();
+        }
         break;
     }
 
