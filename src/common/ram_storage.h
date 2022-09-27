@@ -57,8 +57,8 @@ struct settingsBlock
     uint16_t length;
 } __attribute__((packed));
 
-#if defined(PDM_USE_DYNAMIC_MEMORY) && OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE && \
-    defined(OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE) && OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE
+#if defined(PDM_USE_DYNAMIC_MEMORY) && PDM_USE_DYNAMIC_MEMORY && defined(OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE) && \
+    OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE
 #define ENABLE_STORAGE_DYNAMIC_MEMORY 1
 #else
 #define ENABLE_STORAGE_DYNAMIC_MEMORY 0
@@ -70,10 +70,7 @@ struct settingsBlock
 #define kRamBufferReallocSize 512
 #define kRamBufferMaxAllocSize 10240
 
-#define member_size(type, member) sizeof(((type *)0)->member)
-
-#define kRamDescHeaderSize \
-    (member_size(ramBufferDescriptor, ramBufferLen) + member_size(ramBufferDescriptor, ramBufferMaxLen))
+#define kRamDescHeaderSize offsetof(ramBufferDescriptor, pRamBuffer)
 
 #ifdef __cplusplus
 extern "C" {

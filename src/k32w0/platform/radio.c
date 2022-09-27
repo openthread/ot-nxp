@@ -96,7 +96,13 @@ extern void BOARD_GetCoexIoCfg(void **rfDeny, void **rfActive, void **rfStatus);
 /* max number of SED children <= the size of address mask variable(s) */
 #define MAX_FP_ADDRS MIN(OPENTHREAD_CONFIG_MLE_MAX_CHILDREN, 64)
 
-#define K32W_RX_BUFFERS (8) /* max number of RX buffers */
+#ifndef K32W0_RADIO_NUM_OF_RX_BUFS
+#define K32W0_RADIO_NUM_OF_RX_BUFS (8) /* max number of RX buffers */
+#endif
+
+#if (K32W0_RADIO_NUM_OF_RX_BUFS) & (K32W0_RADIO_NUM_OF_RX_BUFS - 1)
+#error "K32W0_RADIO_NUM_OF_RX_BUFS must be power of 2"
+#endif
 
 /* check IEEE Std. 802.15.4 - 2015: Table 8-81 - MAC sublayer constants */
 #define MAC_TX_RETRIES (3)
@@ -106,7 +112,10 @@ extern void BOARD_GetCoexIoCfg(void **rfDeny, void **rfActive, void **rfStatus);
 
 #define TX_TO 544 /* symbols. 2 max length frames + AIFS */
 
-#define CSL_UNCERT 32 ///< The Uncertainty of the scheduling CSL of transmission by the parent, in ±10 us units.
+#define CSL_UNCERT 255 ///< The Uncertainty of the scheduling CSL of transmission by the parent, in ±10 us units.
+
+/* RX was disabled due to no RX bufs */
+#define OT_RADIO_STATE_RX_DISABLED ((otRadioState)(OT_RADIO_STATE_INVALID - 1))
 
 /* Structures */
 typedef struct
@@ -129,10 +138,12 @@ typedef struct
 
 typedef struct
 {
-    rxRingBufferEntry *buffer[K32W_RX_BUFFERS];
-    uint8_t            head;
-    uint8_t            tail;
-    bool               isFull;
+    rxRingBufferEntry buffer[K32W0_RADIO_NUM_OF_RX_BUFS];
+    volatile uint16_t head;
+    volatile uint16_t tail;
+    volatile uint16_t next;
+    volatile uint16_t last;
+    volatile uint16_t ovf_cnt;
 } rxRingBuffer;
 
 typedef enum
@@ -198,13 +209,12 @@ static bool K32WCheckIfFpRequired(tsPhyFrame *aRxFrame);
 
 static void K32WFrameConversion(tsPhyFrame *aPhyFrame, otRadioFrame *aOtFrame);
 
-static void               K32WResetRxRingBuffer(rxRingBuffer *aRxRing);
-static void               K32WPushRxRingBuffer(rxRingBuffer *aRxRing, rxRingBufferEntry *rbe);
-static rxRingBufferEntry *K32WPopRxRingBuffer(rxRingBuffer *aRxRing);
-static bool               K32WIsEmptyRxRingBuffer(rxRingBuffer *aRxRing);
+static void               K32WResetRxRingBuffer();
+static void               K32WPushRxRingBuffer();
+static void               K32WPopRxRingBuffer();
+static rxRingBufferEntry *K32WGetRxRingBuffer();
 
-static tsPhyFrame *K32WGetFrame(rxRingBufferEntry *aRxFrame, uint8_t *aRxFrameIndex);
-static void        K32WEnableReceive(bool_t isNewFrameNeeded);
+static void K32WEnableReceive();
 
 #if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
 static void K32WEncFrame(void *t, const void *key);
@@ -216,15 +226,15 @@ static void    K32WGetVsIeGen(void *t, uint8_t *b);
 #endif
 
 /* Private variables declaration */
-static otRadioState sState = OT_RADIO_STATE_DISABLED;
-static otInstance * sInstance;     /* Saved OT Instance */
-static int8_t       sTxPwrLevel;   /* Default power is 0 dBm */
-static uint8_t      sChannel = 0;  /* Default channel - must be invalid so it
-                                      updates the first time it is set */
-static bool_t sIsFpEnabled = TRUE; /* Enable address match so FP=0 for SED.
-                                      Address match is disabled only when address table is full.
-                                      See SourceMatchController::AddEntry() */
-static uint16_t  sPanId;           /* PAN ID currently in use */
+static volatile otRadioState sState = OT_RADIO_STATE_DISABLED;
+static otInstance *          sInstance;    /* Saved OT Instance */
+static int8_t                sTxPwrLevel;  /* Default power is 0 dBm */
+static uint8_t               sChannel = 0; /* Default channel - must be invalid so it
+                                              updates the first time it is set */
+static bool_t sIsFpEnabled = TRUE;         /* Enable address match so FP=0 for SED.
+                                              Address match is disabled only when address table is full.
+                                              See SourceMatchController::AddEntry() */
+static uint16_t  sPanId;                   /* PAN ID currently in use */
 static uint16_t  sShortAddress;
 static tsExtAddr sExtAddress;
 static uint64_t  sCustomExtAddr = 0;
@@ -240,12 +250,8 @@ static uint64_t         sFpShortAddrMask;           /* Mask - sFpShortAddr valid
 static fpNeighExtAddr sFpExtAddr[MAX_FP_ADDRS]; /* Frame Pending extended addresses array */
 static uint64_t       sFpExtAddrMask;           /* Mask - sFpExtAddr is valid */
 
-static rxRingBuffer      sRxRing;                       /* Receive Ring Buffer */
-static rxRingBufferEntry sRxFrame[K32W_RX_BUFFERS];     /* RX Buffers */
-static tsPhyFrame *      sRxFrameInProcess;             /* RX Frame currently in processing */
-static bool_t            sIsRxDisabled;                 /* TRUE if RX was disabled due to no RX bufs */
-static uint8_t           sRxFrameIndex;                 /* Index tracking the sRxFrame array */
-static teRxOption        sRxOpt = E_MMAC_RX_START_NOW | /* RX Options */
+static rxRingBuffer sRxRing;                       /* Receive Ring Buffer */
+static teRxOption   sRxOpt = E_MMAC_RX_START_NOW | /* RX Options */
                            E_MMAC_RX_ALIGN_NORMAL | E_MMAC_RX_USE_AUTO_ACK | E_MMAC_RX_NO_MALFORMED |
                            E_MMAC_RX_NO_FCS_ERROR | E_MMAC_RX_ADDRESS_MATCH;
 
@@ -258,7 +264,6 @@ static bool_t       sPromiscuousEnable = FALSE;
 static bool_t       sTxDone;    /* TRUE if a TX frame was sent into the air */
 static otError      sTxStatus;  /* Status of the latest TX operation */
 static otRadioFrame sTxOtFrame; /* OT TX Frame to be send */
-static tsPhyFrame * pLastRxFrame = NULL;
 
 #if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
 static uint32_t sMacFrameCounter;
@@ -313,13 +318,10 @@ void App_SetCustomEui64(uint8_t *aIeeeEui64)
 void K32WRadioInit(void)
 {
     /* RX initialization */
-    memset(sRxFrame, 0, sizeof(sRxFrame));
-    sRxFrameIndex = 0;
-
-    for (int i = 0; i < K32W_RX_BUFFERS; i++)
+    for (int i = 0; i < K32W0_RADIO_NUM_OF_RX_BUFS; i++)
     {
         /* Both frames have the same payload */
-        sRxFrame[i].of.mPsdu = sRxFrame[i].f.uPayload.au8Byte;
+        sRxRing.buffer[i].of.mPsdu = sRxRing.buffer[i].f.uPayload.au8Byte;
     }
 
     /* ACK frame initialization.
@@ -401,23 +403,21 @@ otError otPlatRadioEnable(otInstance *aInstance)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    K32WResetRxRingBuffer(&sRxRing);
-    sRxFrameIndex = 0;
+    K32WResetRxRingBuffer();
+
     V2MMAC_Enable();
     V2MMAC_RegisterIntHandler(K32WISR);
     vMMAC_ConfigureRadio();
 
     if (sRadioInitForLp)
     {
+        sRadioInitForLp = FALSE;
+
         /* Re-set modem settings after low power exit */
         vMMAC_SetChannelAndPower(sChannel, sTxPwrLevel);
         vMMAC_SetRxExtendedAddr(&sExtAddress);
         vMMAC_SetRxPanId(sPanId);
         vMMAC_SetRxShortAddr(sShortAddress);
-    }
-    else
-    {
-        sTxOtFrame.mLength = 0;
     }
 
 #if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
@@ -442,11 +442,15 @@ otError otPlatRadioDisable(otInstance *aInstance)
 
     otEXPECT(otPlatRadioIsEnabled(aInstance));
 
-    K32WResetRxRingBuffer(&sRxRing);
-    sRxFrameIndex = 0;
-    vMMAC_Disable();
+    /* stop the radio so there are no pending interrupts */
+    vMMAC_RadioToOffAndWait();
+
     sState = OT_RADIO_STATE_DISABLED;
-    error  = OT_ERROR_NONE;
+
+    K32WResetRxRingBuffer();
+
+    vMMAC_Disable();
+    error = OT_ERROR_NONE;
 
 exit:
     return error;
@@ -471,8 +475,10 @@ otError otPlatRadioSleep(otInstance *aInstance)
        exiting low power */
     sRadioInitForLp = TRUE;
 
-    sState = OT_RADIO_STATE_SLEEP;
+    /* stop the radio so there are no pending interrupts */
     vMMAC_RadioToOffAndWait();
+
+    sState = OT_RADIO_STATE_SLEEP;
 
     /* prevent multiple calls to the allow to sleep callback */
     if (FALSE == sAllowDeviceToSleep)
@@ -490,16 +496,26 @@ otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    otError error = OT_ERROR_NONE;
+    otError  error  = OT_ERROR_NONE;
+    uint32_t txTime = 0;
 
     otEXPECT_ACTION(((sState != OT_RADIO_STATE_TRANSMIT) && (sState != OT_RADIO_STATE_DISABLED)),
                     error = OT_ERROR_INVALID_STATE);
 
     /* Already in Rx on the same channel */
-    otEXPECT((sChannel != aChannel) || (OT_RADIO_STATE_RECEIVE != sState));
+    otEXPECT((sChannel != aChannel) || ((OT_RADIO_STATE_RECEIVE != sState) && (OT_RADIO_STATE_RX_DISABLED != sState)));
 
-    /* stop the radio */
+    /* wait for Rx to finish */
+    txTime = u32MMAC_GetTime();
+
+    while (v2MAC_is_rx_ongoing() && ((u32MMAC_GetTime() - txTime) < TX_TO))
+    {
+    }
+
+    /* stop the radio so there are no pending interrupts */
     vMMAC_RadioToOffAndWait();
+
+    sState = OT_RADIO_STATE_RECEIVE;
 
     /* prevent multiple calls to the allow to sleep callback */
     if (TRUE == sAllowDeviceToSleep)
@@ -509,20 +525,9 @@ otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel)
         RADIO_LOG("App_DisallowDeviceToSleep");
     }
 
-    /* Check if the channel needs to be changed */
-    if (sChannel != aChannel)
-    {
-        /* The state is set to sleep to prevent an Rx restart.
-         * This might happen when the channel is switched
-         * in the middle of a receive operation */
-        sState   = OT_RADIO_STATE_SLEEP;
-        sChannel = aChannel;
-
-        vMMAC_SetChannelAndPower(sChannel, sTxPwrLevel);
-    }
-
-    sState = OT_RADIO_STATE_RECEIVE;
-    K32WEnableReceive(TRUE);
+    sChannel = aChannel;
+    vMMAC_SetChannelAndPower(sChannel, sTxPwrLevel);
+    K32WEnableReceive();
 
 exit:
     return error;
@@ -666,7 +671,8 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
     teTxOption eOptions = E_MMAC_TX_USE_AUTO_ACK;
     uint32_t   txTime   = 0;
 
-    otEXPECT_ACTION((OT_RADIO_STATE_SLEEP == sState) || (OT_RADIO_STATE_RECEIVE == sState),
+    otEXPECT_ACTION((OT_RADIO_STATE_SLEEP == sState) || (OT_RADIO_STATE_RECEIVE == sState) ||
+                        (OT_RADIO_STATE_RX_DISABLED == sState),
                     error = OT_ERROR_INVALID_STATE);
 
     /* wait for Rx to finish */
@@ -677,8 +683,12 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
     }
     txTime = 0;
 
-    /* stop the radio */
+    /* stop the radio so there are no pending interrupts */
     vMMAC_RadioToOffAndWait();
+
+    /* go to TX state */
+    sState    = OT_RADIO_STATE_TRANSMIT;
+    sTxStatus = OT_ERROR_NONE;
 
     /* prevent multiple calls to the allow to sleep callback */
     if (TRUE == sAllowDeviceToSleep)
@@ -687,10 +697,6 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
         sAllowDeviceToSleep = FALSE;
         RADIO_LOG("App_DisallowDeviceToSleep");
     }
-
-    /* go to TX state */
-    sState    = OT_RADIO_STATE_TRANSMIT;
-    sTxStatus = OT_ERROR_NONE;
 
 #if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
     if (otMacFrameIsSecurityEnabled(aFrame) && otMacFrameIsKeyIdMode1(aFrame) &&
@@ -723,6 +729,9 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
     /* set tx channel */
     if (sChannel != aFrame->mChannel)
     {
+        /* after tx ends, rx on the same channel */
+        sChannel = aFrame->mChannel;
+
         vMMAC_SetChannelAndPower(aFrame->mChannel, sTxPwrLevel);
     }
 
@@ -786,7 +795,8 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance)
     int16_t rssiValSigned = 0;
     bool_t  stateChanged  = FALSE;
 
-    otEXPECT((sState == OT_RADIO_STATE_SLEEP) || (sState == OT_RADIO_STATE_RECEIVE));
+    otEXPECT((sState == OT_RADIO_STATE_SLEEP) || (sState == OT_RADIO_STATE_RECEIVE) ||
+             (sState == OT_RADIO_STATE_RX_DISABLED));
 
     /* in RCP designs, the RSSI function is called while the radio is in
      * OT_RADIO_STATE_RECEIVE. Turn off the radio before reading RSSI,
@@ -796,10 +806,12 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance)
 
     OSA_InterruptDisable();
 
-    if (sState == OT_RADIO_STATE_RECEIVE)
+    if ((sState == OT_RADIO_STATE_RECEIVE) || (sState == OT_RADIO_STATE_RX_DISABLED))
     {
-        sState = OT_RADIO_STATE_SLEEP;
+        /* stop the radio so there are no pending interrupts */
         vMMAC_RadioToOffAndWait();
+
+        sState       = OT_RADIO_STATE_SLEEP;
         stateChanged = TRUE;
     }
 
@@ -808,7 +820,7 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance)
     if (stateChanged)
     {
         sState = OT_RADIO_STATE_RECEIVE;
-        K32WEnableReceive(TRUE);
+        K32WEnableReceive();
     }
 
     OSA_InterruptEnable();
@@ -887,8 +899,13 @@ exit:
 otError otPlatRadioSetTransmitPower(otInstance *aInstance, int8_t aPower)
 {
     OT_UNUSED_VARIABLE(aInstance);
-    otRadioState tempState = sState;
-    sState                 = OT_RADIO_STATE_SLEEP;
+    otError status = OT_ERROR_NONE;
+
+    otEXPECT_ACTION(((sState != OT_RADIO_STATE_TRANSMIT) && (sState != OT_RADIO_STATE_DISABLED)),
+                    status = OT_ERROR_INVALID_STATE);
+
+    /* stop the radio so there are no pending interrupts */
+    vMMAC_RadioToOffAndWait();
 
     /* trim the values to the radio capabilities */
     if (aPower < K32W_RADIO_MIN_TX_POWER_DBM)
@@ -914,9 +931,15 @@ otError otPlatRadioSetTransmitPower(otInstance *aInstance, int8_t aPower)
         /* if the channel has not yet been initialized use K32W_RADIO_DEFAULT_CHANNEL as default */
         vMMAC_SetChannelAndPower(K32W_RADIO_DEFAULT_CHANNEL, aPower);
     }
-    sState = tempState;
 
-    return OT_ERROR_NONE;
+    if ((sState == OT_RADIO_STATE_RECEIVE) || (sState == OT_RADIO_STATE_RX_DISABLED))
+    {
+        sState = OT_RADIO_STATE_RECEIVE;
+        K32WEnableReceive();
+    }
+
+exit:
+    return status;
 }
 
 otError otPlatRadioGetCcaEnergyDetectThreshold(otInstance *aInstance, int8_t *aThreshold)
@@ -954,6 +977,40 @@ static void K32WISR(uint32_t u32IntBitmap)
 
     switch (sState)
     {
+    case OT_RADIO_STATE_RECEIVE:
+
+        if (u32IntBitmap & E_MMAC_INT_RX_HEADER)
+        {
+            /* This event doesn't mean end of reception */
+
+            /* go back one index from current frame index */
+            rbe = &sRxRing.buffer[sRxRing.next];
+
+            /* FP processing first */
+            K32WProcessMacHeader(&rbe->f);
+        }
+
+        if (u32IntBitmap & E_MMAC_INT_RX_COMPLETE)
+        {
+            /* no rx errors */
+            if (0 == u32V2MAC_GetRxErrors())
+            {
+                /* go back one index from current frame index */
+                rbe = &sRxRing.buffer[sRxRing.next];
+
+                /* Get rx info for frame */
+                K32WGetRxFrameInfo(rbe);
+
+                /* RX interrupt fired so it's safe to consume the frame */
+                K32WPushRxRingBuffer();
+            }
+
+            /* restart RX */
+            K32WEnableReceive();
+        }
+
+        BOARD_LedDongleToggle();
+        break;
     case OT_RADIO_STATE_TRANSMIT:
 
         if (u32IntBitmap & E_MMAC_INT_TX_COMPLETE)
@@ -996,49 +1053,15 @@ static void K32WISR(uint32_t u32IntBitmap)
 
             BOARD_LedDongleToggle();
             sState = OT_RADIO_STATE_RECEIVE;
-            K32WEnableReceive(TRUE);
-            break;
+            K32WEnableReceive();
         }
+        break;
 
     default:
-        if (u32IntBitmap & E_MMAC_INT_RX_HEADER)
-        {
-            /* This event doesn't mean end of reception */
-
-            /* go back one index from current frame index */
-            rbe = &sRxFrame[(sRxFrameIndex + K32W_RX_BUFFERS - 1) % K32W_RX_BUFFERS];
-
-            /* FP processing first */
-            K32WProcessMacHeader(&rbe->f);
-        }
-
-        if (u32IntBitmap & E_MMAC_INT_RX_COMPLETE)
-        {
-            if (0 == u32V2MAC_GetRxErrors())
-            {
-                /* go back one index from current frame index */
-                rbe = &sRxFrame[(sRxFrameIndex + K32W_RX_BUFFERS - 1) % K32W_RX_BUFFERS];
-
-                /* Get rx info for frame */
-                K32WGetRxFrameInfo(rbe);
-
-                /* RX interrupt fired so it's safe to consume the frame */
-                K32WPushRxRingBuffer(&sRxRing, rbe);
-            }
-
-            if (OT_RADIO_STATE_RECEIVE == sState)
-            {
-                /* restart Rx and keep same buffer if Rx failed */
-                K32WEnableReceive(0 == u32V2MAC_GetRxErrors());
-            }
-            BOARD_LedDongleToggle();
-        }
         break;
     }
 
-#if USE_RTOS
     otSysEventSignalPending();
-#endif
 }
 /**
  * Process the MAC Header of the latest received packet
@@ -1151,17 +1174,23 @@ static void K32WProcessRxFrames(otInstance *aInstance)
 {
     rxRingBufferEntry *rbe = NULL;
 
-    while ((rbe = K32WPopRxRingBuffer(&sRxRing)) != NULL)
+    while ((rbe = K32WGetRxRingBuffer()) != NULL)
     {
         otPlatRadioReceiveDone(aInstance, &rbe->of, OT_ERROR_NONE);
 
-        OSA_InterruptDisable();
-        sRxFrameInProcess = NULL;
-        if (sIsRxDisabled)
+        K32WPopRxRingBuffer();
+
+        if (sState == OT_RADIO_STATE_RX_DISABLED)
         {
-            K32WEnableReceive(TRUE);
+            sState = OT_RADIO_STATE_RECEIVE;
+            K32WEnableReceive();
         }
-        OSA_InterruptEnable();
+    }
+
+    if (sState == OT_RADIO_STATE_RX_DISABLED)
+    {
+        sState = OT_RADIO_STATE_RECEIVE;
+        K32WEnableReceive();
     }
 }
 
@@ -1235,134 +1264,73 @@ static void K32WFrameConversion(tsPhyFrame *aPhyFrame, otRadioFrame *aOtFrame)
  *
  * @param[in] aRxRing         Pointer to an RX Ring Buffer
  */
-static void K32WResetRxRingBuffer(rxRingBuffer *aRxRing)
+static void K32WResetRxRingBuffer()
 {
-    aRxRing->head   = 0;
-    aRxRing->tail   = 0;
-    aRxRing->isFull = FALSE;
+    sRxRing.head    = K32W0_RADIO_NUM_OF_RX_BUFS - 1;
+    sRxRing.tail    = K32W0_RADIO_NUM_OF_RX_BUFS - 1;
+    sRxRing.next    = 0;
+    sRxRing.last    = 0;
+    sRxRing.ovf_cnt = 0;
 }
 
 /**
- * Function used to push the address of a received frame to the RX Ring buffer.
- * In case the ring buffer is full, the oldest address is overwritten.
- *
- * @param[in] aRxRing             Pointer to the RX Ring Buffer
- * @param[in] rxRingBufferEntry   The address a received frame + info
+ * Function used to push a received frame to the RX Ring buffer.
  */
-static void K32WPushRxRingBuffer(rxRingBuffer *aRxRing, rxRingBufferEntry *rbe)
+static void K32WPushRxRingBuffer()
 {
-    aRxRing->buffer[aRxRing->head] = rbe;
-    if (aRxRing->isFull)
-    {
-        aRxRing->tail = (aRxRing->tail + 1) % K32W_RX_BUFFERS;
-    }
-
-    aRxRing->head   = (aRxRing->head + 1) % K32W_RX_BUFFERS;
-    aRxRing->isFull = (aRxRing->head == aRxRing->tail);
+    sRxRing.head = sRxRing.next;
 }
 
 /**
- * Function used to pop the address of a received frame from the RX Ring buffer
- * Process Context: the consumer will pop frames with the interrupts disabled
- *                  to make sure the interrupt context(ISR) doesn't push in
- *                  the middle of a pop.
- *
- * @param[in] aRxRing           Pointer to the RX Ring Buffer
- *
- * @return    rxRingBufferEntry Pointer to a received frame + info
- * @return    NULL              In case the RX Ring buffer is empty
+ * Function used to pop a received frame to the RX Ring buffer.
  */
-static rxRingBufferEntry *K32WPopRxRingBuffer(rxRingBuffer *aRxRing)
+static void K32WPopRxRingBuffer()
 {
-    rxRingBufferEntry *rbe = NULL;
+    sRxRing.tail = sRxRing.last;
+}
 
-    OSA_InterruptDisable();
-    if (!K32WIsEmptyRxRingBuffer(aRxRing))
+/**
+ * Function used to get the first received frame from the RX Ring buffer.
+ */
+static rxRingBufferEntry *K32WGetRxRingBuffer()
+{
+    rxRingBufferEntry *rbe  = NULL;
+    uint16_t           tail = sRxRing.tail;
+
+    if (tail == sRxRing.head)
     {
-        rbe             = aRxRing->buffer[aRxRing->tail];
-        aRxRing->isFull = FALSE;
-        aRxRing->tail   = (aRxRing->tail + 1) % K32W_RX_BUFFERS;
+        /* ring empty */
+        return NULL;
     }
-    OSA_InterruptEnable();
+
+    tail         = (tail + 1) & (K32W0_RADIO_NUM_OF_RX_BUFS - 1);
+    rbe          = &sRxRing.buffer[tail];
+    sRxRing.last = tail;
 
     return rbe;
 }
 
 /**
- * Function used to check if an RX Ring buffer is empty
- *
- * @param[in] aRxRing           Pointer to the RX Ring Buffer
- *
- * @return    TRUE              RX Ring Buffer is not empty
- * @return    FALSE             RX Ring Buffer is empty
+ * Function used to enable the receiving of a frame.
+ * Should be called when radio is idle.
  */
-static bool K32WIsEmptyRxRingBuffer(rxRingBuffer *aRxRing)
-{
-    return (!aRxRing->isFull && (aRxRing->head == aRxRing->tail));
-}
-
-/**
- * Function used to get the next frame from aRxFrame pointed by aRxFrameIndex.
- *
- * This is the address where the BBC should DMA a received frame. Once the
- * reception is complete (the RX interrupt fires) this address is added to the
- * ring buffer and the frame can be consumed by the process context.
- *
- * @param[in] aRxFrame            Pointer to an array of rxRingBufferEntry
- * @param[in] aRxFrameIndex       Pointer to the current index in aRxFrame array
- *
- * @return    tsPhyFrame          Pointer to a tsPhyFrame
- */
-static tsPhyFrame *K32WGetFrame(rxRingBufferEntry *aRxFrame, uint8_t *aRxFrameIndex)
-{
-    tsPhyFrame *       frame = NULL;
-    rxRingBufferEntry *cbe   = &aRxFrame[*aRxFrameIndex];
-
-    frame = &cbe->f;
-    if (frame != sRxFrameInProcess)
-    {
-        *aRxFrameIndex = (*aRxFrameIndex + 1) % K32W_RX_BUFFERS;
-    }
-    else
-    {
-        /* this can happen only if the RX buffer is full and the
-         * process context is interrupted right in the middle of
-         * starting to process a frame. In this case, wait for
-         * the process context to finish the processing then
-         * re-enable RX
-         */
-
-        sIsRxDisabled = TRUE;
-        frame         = NULL;
-    }
-
-    return frame;
-}
-
-/**
- * Function used to enable the receiving of a frame
- *
- * @param[in] isNewFrameNeeded FALSE in case the current RX buffer can be
- *                             used for a new RX operation.
- *
- */
-static void K32WEnableReceive(bool_t isNewFrameNeeded)
+static void K32WEnableReceive()
 {
     tsPhyFrame *pRxFrame = NULL;
+    uint16_t    next     = (sRxRing.head + 1) & (K32W0_RADIO_NUM_OF_RX_BUFS - 1);
 
-    if (isNewFrameNeeded)
+    if (next == sRxRing.tail)
     {
-        if ((pRxFrame = K32WGetFrame(sRxFrame, &sRxFrameIndex)) != NULL)
-        {
-            pLastRxFrame = pRxFrame;
-            vMMAC_StartV2MacReceive(pRxFrame, sRxOpt);
-        }
-        otSysEventSignalPending();
+        /* ring full */
+        sState = OT_RADIO_STATE_RX_DISABLED;
+        sRxRing.ovf_cnt++;
+        return;
     }
-    else
-    {
-        vMMAC_StartV2MacReceive(pLastRxFrame, sRxOpt);
-    }
+
+    pRxFrame     = &sRxRing.buffer[next].f;
+    sRxRing.next = next;
+
+    vMMAC_StartV2MacReceive(pRxFrame, sRxOpt);
 }
 
 #if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
@@ -1419,15 +1387,14 @@ void otPlatRadioUpdateCslSampleTime(otInstance *aInstance, uint32_t aCslSampleTi
 
     V2MMAC_SetCslSampleTime(aCslSampleTime);
 }
+#endif
 
-uint8_t otPlatRadioGetCslClockUncertainty(otInstance *aInstance)
+uint8_t otPlatRadioGetCslUncertainty(otInstance *aInstance)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
     return CSL_UNCERT;
 }
-
-#endif
 
 uint64_t otPlatRadioGetNow(otInstance *aInstance)
 {

@@ -105,7 +105,7 @@ rsError ramStorageResize(ramBufferDescriptor **pBuffer, uint16_t aKey, const uin
 
     otEXPECT_ACTION((NULL != *pBuffer), err = RS_ERROR_NO_BUFS);
 
-    if (allocSize <= (*pBuffer)->ramBufferLen + newBlockLength)
+    if (allocSize < (*pBuffer)->ramBufferLen + newBlockLength)
     {
         while ((allocSize < (*pBuffer)->ramBufferLen + newBlockLength))
         {
@@ -120,7 +120,7 @@ rsError ramStorageResize(ramBufferDescriptor **pBuffer, uint16_t aKey, const uin
             ptr = (ramBufferDescriptor *)otPlatRealloc((void *)(*pBuffer), allocSize);
             otEXPECT_ACTION((NULL != ptr), err = RS_ERROR_NO_BUFS);
             *pBuffer                    = ptr;
-            (*pBuffer)->ramBufferMaxLen = allocSize;
+            (*pBuffer)->ramBufferMaxLen = allocSize - kRamDescHeaderSize;
         }
         else
         {
@@ -138,7 +138,7 @@ ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize)
     ramBufferDescriptor *ramDescr  = (ramBufferDescriptor *)&sPdmBuffer;
     uint16_t             bytesRead = 0;
 
-    ramDescr->ramBufferMaxLen = PDM_BUFFER_SIZE - offsetof(ramBufferDescriptor, pRamBuffer);
+    ramDescr->ramBufferMaxLen = PDM_BUFFER_SIZE - kRamDescHeaderSize;
     assert(initialSize <= ramDescr->ramBufferMaxLen);
 
     if (PDM_bDoesDataExist(nvmId, &bytesRead))
