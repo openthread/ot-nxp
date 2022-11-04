@@ -219,7 +219,7 @@ void alarmStartAt(TMR_tsActivityWakeTimerEvent *t, void (*cb)(void), bool *ev, u
     {
         now = otPlatAlarmMicroGetNow();
     }
-    otLogInfoPlat("Start timer: timestamp:%d, aTo:%d, aDt:%d", now, t0, dt);
+    otLogInfoPlat("Start timer: timestamp:%ld, aTo:%ld, aDt:%ld", now, t0, dt);
 
     /* Check 'now' position in range [t0, t1] */
     if ((now - t0 <= dt) && (t1 - now <= dt))
