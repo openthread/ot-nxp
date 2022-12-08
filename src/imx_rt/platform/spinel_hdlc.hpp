@@ -57,8 +57,8 @@ public:
      *
      */
     HdlcInterface(ot::Spinel::SpinelInterface::ReceiveFrameCallback aCallback,
-                  void *                                            aCallbackContext,
-                  ot::Spinel::SpinelInterface::RxFrameBuffer &      aFrameBuffer);
+                  void                                             *aCallbackContext,
+                  ot::Spinel::SpinelInterface::RxFrameBuffer       &aFrameBuffer);
 
     /**
      * This destructor deinitializes the object.
@@ -132,8 +132,8 @@ private:
     SERIAL_MANAGER_READ_HANDLE_DEFINE(otTransceiverSerialReadHandle);
 
     ot::Spinel::SpinelInterface::ReceiveFrameCallback mReceiveFrameCallback;
-    void *                                            mReceiveFrameContext;
-    ot::Spinel::SpinelInterface::RxFrameBuffer &      mReceiveFrameBuffer;
+    void                                             *mReceiveFrameContext;
+    ot::Spinel::SpinelInterface::RxFrameBuffer       &mReceiveFrameBuffer;
 
     ot::Hdlc::FrameBuffer<ot::Spinel::SpinelInterface::kMaxFrameSize> encoderBuffer;
     ot::Hdlc::Encoder                                                 mHdlcEncoder;

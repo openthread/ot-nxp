@@ -31,8 +31,10 @@ set -exo pipefail
 
 OT_CMAKE_NINJA_TARGET=${OT_CMAKE_NINJA_TARGET:-}
 
-readonly OT_SRCDIR="$(pwd)"
-readonly OT_OPTIONS=(
+OT_SRCDIR="$(pwd)"
+readonly OT_SRCDIR
+
+OT_OPTIONS=(
     "-DCMAKE_TOOLCHAIN_FILE=src/imx_rt/rt1060/arm-none-eabi.cmake"
     "-DCMAKE_BUILD_TYPE=MinSizeRel"
     "-DOT_PLATFORM=external"
@@ -50,6 +52,7 @@ readonly OT_OPTIONS=(
     "-DOT_BUILD_RT1060=ON"
     "-DOT_COMPILE_WARNING_AS_ERROR=ON"
 )
+readonly OT_OPTIONS
 
 build()
 {

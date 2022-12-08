@@ -84,8 +84,8 @@ rsError ramStorageAdd(ramBufferDescriptor *pBuffer, uint16_t aKey, const uint8_t
 rsError ramStorageGet(const ramBufferDescriptor *pBuffer,
                       uint16_t                   aKey,
                       int                        aIndex,
-                      uint8_t *                  aValue,
-                      uint16_t *                 aValueLength)
+                      uint8_t                   *aValue,
+                      uint16_t                  *aValueLength)
 {
     uint16_t             i            = 0;
     uint16_t             valueLength  = 0;

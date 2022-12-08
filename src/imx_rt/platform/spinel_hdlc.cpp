@@ -63,7 +63,7 @@
 #define SPINEL_HDLC_MALLOC pvPortMalloc
 #define SPINEL_HDLC_FREE vPortFree
 
-static void Uart_RxCallBackStatic(void *                             pData,
+static void Uart_RxCallBackStatic(void                              *pData,
                                   serial_manager_callback_message_t *message,
                                   serial_manager_status_t            status)
 {
@@ -75,7 +75,7 @@ static void Uart_RxCallBackStatic(void *                             pData,
 #endif
 }
 
-static void Uart_TxCallBackStatic(void *                             pData,
+static void Uart_TxCallBackStatic(void                              *pData,
                                   serial_manager_callback_message_t *message,
                                   serial_manager_status_t            status)
 {
@@ -90,8 +90,8 @@ namespace ot {
 namespace RT {
 
 HdlcInterface::HdlcInterface(ot::Spinel::SpinelInterface::ReceiveFrameCallback aCallback,
-                             void *                                            aCallbackContext,
-                             ot::Spinel::SpinelInterface::RxFrameBuffer &      aFrameBuffer)
+                             void                                             *aCallbackContext,
+                             ot::Spinel::SpinelInterface::RxFrameBuffer       &aFrameBuffer)
     : mReceiveFrameCallback(aCallback)
     , mReceiveFrameContext(aCallbackContext)
     , mReceiveFrameBuffer(aFrameBuffer)

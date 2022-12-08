@@ -227,7 +227,7 @@ static void    K32WGetVsIeGen(void *t, uint8_t *b);
 
 /* Private variables declaration */
 static volatile otRadioState sState = OT_RADIO_STATE_DISABLED;
-static otInstance *          sInstance;    /* Saved OT Instance */
+static otInstance           *sInstance;    /* Saved OT Instance */
 static int8_t                sTxPwrLevel;  /* Default power is 0 dBm */
 static uint8_t               sChannel = 0; /* Default channel - must be invalid so it
                                               updates the first time it is set */
@@ -1334,7 +1334,7 @@ static void K32WEnableReceive()
 }
 
 #if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
-void otPlatRadioSetMacKey(otInstance *            aInstance,
+void otPlatRadioSetMacKey(otInstance             *aInstance,
                           uint8_t                 aKeyIdMode,
                           uint8_t                 aKeyId,
                           const otMacKeyMaterial *aPrevKey,
@@ -1363,7 +1363,7 @@ void otPlatRadioSetMacFrameCounter(otInstance *aInstance, uint32_t aMacFrameCoun
 }
 
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
-otError otPlatRadioEnableCsl(otInstance *        aInstance,
+otError otPlatRadioEnableCsl(otInstance         *aInstance,
                              uint32_t            aCslPeriod,
                              otShortAddress      aShortAddr,
                              const otExtAddress *aExtAddr)
@@ -1417,7 +1417,7 @@ static void K32WEncFrame(void *t, const void *key)
 }
 
 #if OPENTHREAD_CONFIG_MLE_LINK_METRICS_SUBJECT_ENABLE
-otError otPlatRadioConfigureEnhAckProbing(otInstance *        aInstance,
+otError otPlatRadioConfigureEnhAckProbing(otInstance         *aInstance,
                                           otLinkMetrics       aLinkMetrics,
                                           otShortAddress      aShortAddress,
                                           const otExtAddress *aExtAddress)
@@ -1486,9 +1486,9 @@ uint8_t otPlatRadioGetCslAccuracy(otInstance *aInstance)
 otError otPlatRadioSetCoexEnabled(otInstance *aInstance, bool aEnabled)
 {
     otError error    = OT_ERROR_NONE;
-    void *  rfDeny   = NULL;
-    void *  rfActive = NULL;
-    void *  rfStatus = NULL;
+    void   *rfDeny   = NULL;
+    void   *rfActive = NULL;
+    void   *rfStatus = NULL;
 
     OT_UNUSED_VARIABLE(aInstance);
 
