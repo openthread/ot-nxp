@@ -58,7 +58,7 @@
 uint8_t __attribute__((section(".heap"))) ucHeap[configTOTAL_HEAP_SIZE];
 #endif
 
-static otInstance * sInstance = NULL;
+static otInstance  *sInstance = NULL;
 static TaskHandle_t sMainTask = NULL;
 
 extern void otAppCliInit(otInstance *aInstance);

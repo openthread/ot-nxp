@@ -57,10 +57,10 @@ typedef enum
 /**
  *  SPI Slave transaction variables.
  */
-static void *                                    sContext          = NULL;
-static uint8_t *                                 sOutputBuf        = NULL;
+static void                                     *sContext          = NULL;
+static uint8_t                                  *sOutputBuf        = NULL;
 static uint16_t                                  sOutputBufLen     = 0;
-static uint8_t *                                 sInputBuf         = NULL;
+static uint8_t                                  *sInputBuf         = NULL;
 static uint16_t                                  sInputBufLen      = 0;
 static otPlatSpiSlaveTransactionProcessCallback  sProcessCallback  = NULL;
 static otPlatSpiSlaveTransactionCompleteCallback sCompleteCallback = NULL;
@@ -68,8 +68,8 @@ static bool                                      firstBoot         = true;
 
 static dma_handle_t         slaveTxHandle;
 static dma_handle_t         slaveRxHandle;
-static dma_handle_t *       txHandle; /*!< DMA handler for SPI send */
-static dma_handle_t *       rxHandle; /*!< DMA handler for SPI receive */
+static dma_handle_t        *txHandle; /*!< DMA handler for SPI send */
+static dma_handle_t        *rxHandle; /*!< DMA handler for SPI receive */
 static eSpiTransactionState transactionState          = SPI_TRANSACTION_DONE;
 static uint32_t             nbBusyStateDuringSpiTrans = 0;
 
@@ -110,7 +110,7 @@ static void prepareTxBuffers(uint8_t *aOutputBuf, uint16_t aOutputBufLen, bool a
 {
     spi_transfer_t        xfer       = {0};
     dma_transfer_config_t xferConfig = {0};
-    spi_config_t *        spi_config_p;
+    spi_config_t         *spi_config_p;
 
     /* Empty FIFOs */
     SPI1->FIFOCFG |= SPI_FIFOCFG_EMPTYTX_MASK;
@@ -287,13 +287,13 @@ static void SPI_TxDMACallback(dma_handle_t *handle, void *userData, bool transfe
 
 otError otPlatSpiSlaveEnable(otPlatSpiSlaveTransactionCompleteCallback aCompleteCallback,
                              otPlatSpiSlaveTransactionProcessCallback  aProcessCallback,
-                             void *                                    aContext)
+                             void                                     *aContext)
 {
     otError               result = OT_ERROR_NONE;
     spi_slave_config_t    userConfig;
     dma_transfer_config_t transferConfig;
     uint32_t              tmp = 0;
-    spi_config_t *        spi_config_p;
+    spi_config_t         *spi_config_p;
 
     assert(aCompleteCallback != NULL);
     assert(aProcessCallback != NULL);

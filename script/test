@@ -29,9 +29,14 @@
 
 set -euxo pipefail
 
-readonly OT_BUILDDIR_K32W061="$(pwd)/build_k32w061"
-readonly OT_BUILDDIR_JN5189="$(pwd)/build_jn5189"
-readonly OT_BUILDDIR_RT1060="$(pwd)/build_rt1060"
+OT_BUILDDIR_K32W061="$(pwd)/build_k32w061"
+readonly OT_BUILDDIR_K32W061
+
+OT_BUILDDIR_JN5189="$(pwd)/build_jn5189"
+readonly OT_BUILDDIR_JN5189
+
+OT_BUILDDIR_RT1060="$(pwd)/build_rt1060"
+readonly OT_BUILDDIR_RT1060
 
 main()
 {

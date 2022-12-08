@@ -80,8 +80,8 @@ extern "C" {
 rsError ramStorageGet(const ramBufferDescriptor *pBuffer,
                       uint16_t                   aKey,
                       int                        aIndex,
-                      uint8_t *                  aValue,
-                      uint16_t *                 aValueLength);
+                      uint8_t                   *aValue,
+                      uint16_t                  *aValueLength);
 
 /* search RAM buffer for aKey and set its value to aValue (having aValueLength length)
  * - aValue and aValueLength can be NULL - the function checks only for the existence of aKey

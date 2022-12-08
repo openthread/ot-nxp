@@ -31,13 +31,16 @@ set -exo pipefail
 
 OT_CMAKE_NINJA_TARGET=${OT_CMAKE_NINJA_TARGET:-}
 
-readonly OT_SRCDIR="$(pwd)"
-readonly OT_OPTIONS=(
+OT_SRCDIR="$(pwd)"
+readonly OT_SRCDIR
+
+OT_OPTIONS=(
     "-DCMAKE_TOOLCHAIN_FILE=src/k32w0/jn5189/arm-none-eabi.cmake"
     "-DCMAKE_BUILD_TYPE=MinSizeRel"
     "-DOT_PLATFORM=external"
     "-DOT_SLAAC=ON"
 )
+readonly OT_OPTIONS
 
 build()
 {

@@ -42,7 +42,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-otInstance *          sInstance;
+otInstance           *sInstance;
 OT_TOOL_WEAK uint32_t gInterruptDisableCount = 0;
 
 void hardware_init(void);

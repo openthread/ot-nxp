@@ -187,8 +187,8 @@ static void             K32WProcessRxFrames(otInstance *aInstance);
 static void             K32WProcessTxFrame(otInstance *aInstance);
 static bool             K32WCheckIfFpRequired(tsRxFrameFormat *aRxFrame);
 static bool_t           K32WIsDataReq(tsRxFrameFormat *aRxFrame);
-static otError          K32WFrameConversion(tsRxFrameFormat *   aMacFormatFrame,
-                                            otRadioFrame *      aOtFrame,
+static otError          K32WFrameConversion(tsRxFrameFormat    *aMacFormatFrame,
+                                            otRadioFrame       *aOtFrame,
                                             frameConversionType convType);
 static void             K32WCopy(uint8_t *aFieldValue, uint8_t **aPsdu, uint8_t copySize, frameConversionType convType);
 static void             K32WResetRxRingBuffer(rxRingBuffer *aRxRing);
@@ -201,7 +201,7 @@ static void             K32WRestartRx();
 
 /* Private variables declaration */
 static otRadioState sState = OT_RADIO_STATE_DISABLED;
-static otInstance * sInstance;    /* Saved OT Instance */
+static otInstance  *sInstance;    /* Saved OT Instance */
 static int8_t       sTxPwrLevel;  /* Default power is 0 dBm */
 static uint8_t      sChannel = 0; /* Default channel - must be invalid so it
                                      updates the first time it is set */
@@ -1119,13 +1119,13 @@ static void K32WProcessTxFrame(otInstance *aInstance)
  * @return    OT_ERROR_NONE      No conversion error
  * @return    OT_ERROR_PARSE     Conversion failed due to parsing error
  */
-static otError K32WFrameConversion(tsRxFrameFormat *   aMacFormatFrame,
-                                   otRadioFrame *      aOtFrame,
+static otError K32WFrameConversion(tsRxFrameFormat    *aMacFormatFrame,
+                                   otRadioFrame       *aOtFrame,
                                    frameConversionType convType)
 {
     tsMacFrame *pMacFrame         = &aMacFormatFrame->sFrameBody;
-    uint8_t *   pSavedStartRxPSDU = aOtFrame->mPsdu;
-    uint8_t *   pPsdu             = aOtFrame->mPsdu;
+    uint8_t    *pSavedStartRxPSDU = aOtFrame->mPsdu;
+    uint8_t    *pPsdu             = aOtFrame->mPsdu;
     uint16_t    aFcf              = 0;
     otError     error             = OT_ERROR_NONE;
 
