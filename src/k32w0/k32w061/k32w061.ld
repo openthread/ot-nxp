@@ -58,6 +58,7 @@ MEMORY
 
 /* Define a symbol for the top of each memory region */
 __top_RAM0      = MEM_RAM0_BASE + MEM_RAM0_SIZE; /* 87K bytes */
+__top_RAM1      = 0x4020000 + 0x10000 ; /* 64K bytes */
 
 HEAP_SIZE = DEFINED(HEAP_SIZE) ? HEAP_SIZE : 0x2F4;
 

@@ -41,6 +41,14 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#if (defined(gClkUseFro32K) && (gClkUseFro32K == 1)) && (cPWR_FullPowerDownMode == 0)
+#include "TimersManager.h"
+
+#ifndef FRO32K_CALIBRATION_LOOPS
+#define FRO32K_CALIBRATION_LOOPS 1000000 /* equates to ~ 100 s */
+#endif
+
+#endif /* (defined(gClkUseFro32K) && (gClkUseFro32K == 1)) && (cPWR_FullPowerDownMode == 0) */
 
 otInstance           *sInstance;
 OT_TOOL_WEAK uint32_t gInterruptDisableCount = 0;
@@ -100,6 +108,11 @@ void otSysProcessDrivers(otInstance *aInstance)
 #ifdef OT_PLAT_SPI_SUPPORT
     K32WSpiSlaveProcess();
 #endif
+/* Do FRO32K calibration for non low power apps.
+   K32W0 SDK will handle the calibration if low power is enabled */
+#if (defined(gClkUseFro32K) && (gClkUseFro32K == 1)) && (cPWR_FullPowerDownMode == 0)
+    K32WFro32KCalibration();
+#endif /* defined(gClkUseFro32K) && (gClkUseFro32K==1) */
 }
 
 WEAK void otSysEventSignalPending(void)
@@ -153,3 +166,37 @@ OT_TOOL_WEAK void OSA_InstallIntHandler(uint32_t IRQNumber, void (*handler)(void
     InstallIRQHandler((IRQn_Type)IRQNumber, (uint32_t)handler);
 #endif
 }
+
+#if (defined(gClkUseFro32K) && (gClkUseFro32K == 1)) && (cPWR_FullPowerDownMode == 0)
+/*FUNCTION**********************************************************************
+ *
+ * Function Name : K32WFro32KCalibration
+ * Description   : This function is used to trigger a calibration of the FRO32K
+ *
+ *END**************************************************************************/
+void K32WFro32KCalibration(void)
+{
+    static bool     bFro32KCalibStarted  = false;
+    static uint32_t u32ProcessLoopCounts = 0;
+
+    if (!bFro32KCalibStarted && (u32ProcessLoopCounts >= FRO32K_CALIBRATION_LOOPS))
+    {
+        /* Start calibration here */
+        FRO32K_StartCalibration();
+        bFro32KCalibStarted = true;
+    }
+    else
+    {
+        if (bFro32KCalibStarted)
+        {
+            uint32_t u32FreqComp;
+            if ((u32FreqComp = FRO32K_CompleteCalibration()) != 0)
+            {
+                bFro32KCalibStarted  = false;
+                u32ProcessLoopCounts = 0;
+            }
+        }
+        u32ProcessLoopCounts++;
+    }
+}
+#endif /* defined(gClkUseFro32K) && (gClkUseFro32K==1) */

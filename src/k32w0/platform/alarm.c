@@ -67,20 +67,6 @@
 
 #define US_PER_MS 1000ULL
 
-/* 32768 ticks = 1s */
-#define US_TO_TICKS32K(x) ((((uint64_t)(x)) << 9) / 15625)
-
-/* Overflow ticks for WTIMER0_LSB to us */
-#define WTIMER0_LSB_OVF ((uint64_t)1 << 32)
-#define OVF_32bit_US TICKS32kHz_TO_USEC(WTIMER0_LSB_OVF)
-
-/* Every time WTIMER0_LSB overflows (36 hours) we add OVF_32bit_US */
-static uint64_t tstp_ovf;
-
-/* Since WTIMER0_LSB overflows quite slow, comparing current timestamp (ticks)
-   with previous timestamp it's a reliable way to detect it */
-static uint32_t prev_tstp;
-
 static bool     sEventFired = false;
 static uint32_t refClk;
 
@@ -235,11 +221,11 @@ void alarmStartAt(TMR_tsActivityWakeTimerEvent *t, void (*cb)(void), bool *ev, u
 
     if (ms)
     {
-        targetTicks = (uint32_t)MILLISECONDS_TO_TICKS32K(targetTicks);
+        targetTicks = (uint32_t)TMR_ConvertUsToTicks(targetTicks * US_PER_MS);
     }
     else
     {
-        targetTicks = (uint32_t)US_TO_TICKS32K(targetTicks);
+        targetTicks = (uint32_t)TMR_ConvertUsToTicks(targetTicks);
     }
 
     if (targetTicks > 0)
@@ -355,22 +341,5 @@ uint32_t otPlatAlarmMicroGetNow(void)
 
 uint64_t otPlatTimeGet(void)
 {
-    OSA_InterruptDisable();
-
-    uint64_t us_tstp = 0;
-
-    /* Make the us timestamp wrap around on 64-bit */
-    uint32_t tstp = Timestamp_GetCounter32bit();
-
-    if (prev_tstp > tstp)
-    {
-        /* 32-bit counter */
-        tstp_ovf += OVF_32bit_US;
-    }
-    prev_tstp = tstp;
-    us_tstp   = TICKS32kHz_TO_USEC(tstp) + tstp_ovf;
-
-    OSA_InterruptEnable();
-
-    return us_tstp;
+    return TMR_GetTimestampUs();
 }

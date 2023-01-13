@@ -29,26 +29,41 @@
 #ifndef RAM_STORAGE_K32W_H_
 #define RAM_STORAGE_K32W_H_
 
+#include "fsl_os_abstraction.h"
+
 #include <stdint.h>
 
 typedef enum
 {
     RS_ERROR_NONE,
     RS_ERROR_NOT_FOUND,
-    RS_ERROR_NO_BUFS
+    RS_ERROR_NO_BUFS,
+    RS_ERROR_PDM_ENC
 } rsError;
 
-/* the structure used for keeping the records has the same structure both in RAM and in NVM:
- * ramBufferLen | ramBufferMaxLen | settingsBlock+Data | .... | settingsBlock+Data
- *
- * ramBufferLen shows how much of the RAM buffer is currently occupied with settingsBlock structures
- * ramBufferMaxLen shows the total malloc'ed size. Dynamic re-allocation is possible
+/* Header for a RAM buffer descriptor.
+ * length: actual RAM buffer length (currently occupied with settingsBlock + data pairs).
+ * maxLength: total allocated memory for RAM buffer (without header).
+ * mutexHandle: mutex that protects RAM buffer operations.
  */
 typedef struct
 {
-    uint16_t ramBufferLen;
-    uint16_t ramBufferMaxLen;
-    uint8_t  pRamBuffer[1];
+    uint16_t length;
+    uint16_t maxLength;
+#if PDM_SAVE_IDLE
+    osaMutexId_t mutexHandle;
+#endif
+} ramBufferHeader;
+
+/* RAM buffer descriptor.
+ * header: metadata describing the RAM buffer. Allocated only once.
+ * buffer: actual data in |settingsBlock + data|...|settingsBlock + data| form.
+ *         Can be reallocated dynamically, based on the application needs.
+ */
+typedef struct
+{
+    ramBufferHeader header;
+    uint8_t        *buffer;
 } ramBufferDescriptor;
 
 struct settingsBlock
@@ -70,7 +85,7 @@ struct settingsBlock
 #define kRamBufferReallocSize 512
 #define kRamBufferMaxAllocSize 10240
 
-#define kRamDescHeaderSize offsetof(ramBufferDescriptor, pRamBuffer)
+#define kRamDescSize sizeof(ramBufferDescriptor)
 
 #ifdef __cplusplus
 extern "C" {

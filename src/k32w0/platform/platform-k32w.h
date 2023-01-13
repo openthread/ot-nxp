@@ -117,4 +117,12 @@ void K32WWriteBlocking(const uint8_t *aBuf, uint32_t len);
  *
  */
 void K32WSpiSlaveProcess(void);
+
+/**
+ * This function performs FRO32K calibration (non-blocking),
+ *
+ */
+
+void K32WFro32KCalibration(void);
+
 #endif // PLATFORM_K32W_H_

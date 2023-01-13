@@ -72,11 +72,14 @@
 
 #ifndef OT_PLAT_UART_RX_BUFFER_SIZE
 /*
- * Always make sure that OT_PLAT_UART_RX_BUFFER_SIZE is smaller (or equal) than the serial manager rx ring buffer.
+ * Always make sure that OT_PLAT_UART_RX_BUFFER_SIZE has a size equal to the serial manager rx ring buffer.
  * In fact there is a risk to not re-schedule the serial manager task if there is more byte in the rx ring buffer than
  * what SerialMngr_RxCbApp could read.
+ *
+ * As the SerialManager defines the RX ring buffer size to (gSerialMgrRxBufSize_c+1), define OT_PLAT_UART_RX_BUFFER_SIZE
+ * to this value.
  */
-#define OT_PLAT_UART_RX_BUFFER_SIZE gSerialMgrRxBufSize_c
+#define OT_PLAT_UART_RX_BUFFER_SIZE (gSerialMgrRxBufSize_c + 1)
 #endif
 
 #ifndef OT_PLAT_UART_BAUD_RATE
