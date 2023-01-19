@@ -26,7 +26,7 @@
 #define _POSIX_C_SOURCE 200112L
 #endif
 
-#include <crypto/tinycrypt/inc/tinycrypt_util.h>
+#include <tinycrypt_util.h>
 #include "mbedtls/platform.h"
 #include "mbedtls/platform_util.h"
 #include "mbedtls/threading.h"

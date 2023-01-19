@@ -64,11 +64,10 @@
 #endif
 
 #if defined(MBEDTLS_USE_TINYCRYPT)
-#include <crypto/tinycrypt/inc/ecc.h>
-#include <crypto/tinycrypt/inc/tinycrypt_util.h>
+#include <ecc.h>
+#include <tinycrypt_util.h>
 #include <string.h>
 #include "mbedtls/sha256.h"
-//#include "mbedtls/platform_util.h"
 
 #if defined(MBEDTLS_PLATFORM_FAULT_CALLBACKS)
 #include "platform_fault.h"

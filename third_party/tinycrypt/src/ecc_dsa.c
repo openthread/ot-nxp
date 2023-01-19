@@ -65,9 +65,9 @@
 #endif
 
 #if defined(MBEDTLS_USE_TINYCRYPT)
-#include <crypto/tinycrypt/inc/ecc.h>
-#include <crypto/tinycrypt/inc/ecc_dsa.h>
-#include <crypto/tinycrypt/inc/tinycrypt_util.h>
+#include <ecc.h>
+#include <ecc_dsa.h>
+#include <tinycrypt_util.h>
 
 static void bits2int(uECC_word_t *native, const uint8_t *bits, unsigned bits_size)
 {

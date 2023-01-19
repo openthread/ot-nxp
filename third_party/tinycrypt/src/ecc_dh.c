@@ -67,9 +67,9 @@
 #endif
 
 #if defined(MBEDTLS_USE_TINYCRYPT)
-#include <crypto/tinycrypt/inc/ecc.h>
-#include <crypto/tinycrypt/inc/ecc_dh.h>
-#include <crypto/tinycrypt/inc/tinycrypt_util.h>
+#include <ecc.h>
+#include <ecc_dh.h>
+#include <tinycrypt_util.h>
 #include <string.h>
 
 int uECC_make_key_with_d(uint8_t *public_key, uint8_t *private_key, unsigned int *d)

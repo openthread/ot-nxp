@@ -38,9 +38,9 @@
 #include <mbedtls/pk.h>
 #include <mbedtls/version.h>
 
-#include <crypto/tinycrypt/inc/ecc.h>
-#include <crypto/tinycrypt/inc/ecc_dh.h>
-#include <crypto/tinycrypt/inc/ecc_dsa.h>
+#include <ecc.h>
+#include <ecc_dh.h>
+#include <ecc_dsa.h>
 
 #include <crypto/ecdsa.hpp>
 #include <crypto/mbedtls.hpp>
