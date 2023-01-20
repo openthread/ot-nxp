@@ -274,7 +274,8 @@ static uint8_t  sKeyId;
 static uint32_t sCslPeriod;
 #endif
 
-static bool_t sAllowDeviceToSleep = FALSE;
+/* tx/rx prevent low power mode, sleep allows it */
+static bool_t sAllowDeviceToSleep = TRUE;
 
 #if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 static bool isCoexInitialized;
@@ -403,13 +404,19 @@ otError otPlatRadioEnable(otInstance *aInstance)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
+    sAllowDeviceToSleep = TRUE; /* synced with radio state */
+
     K32WResetRxRingBuffer();
 
     V2MMAC_Enable();
     V2MMAC_RegisterIntHandler(K32WISR);
     vMMAC_ConfigureRadio();
 
-    if (sRadioInitForLp)
+    /* Exit from low power and / or already initialized.
+     * Cover the case when otPlatRadioSleep() / otPlatRadioEnable() is not used to enter / exit low power
+     * but otPlatRadioDisable() / otPlatRadioEnable() because it's done from outside the OT stack.
+     */
+    if (sRadioInitForLp || sExtAddress.u32L || sExtAddress.u32H)
     {
         sRadioInitForLp = FALSE;
 
@@ -791,7 +798,7 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    int8_t  rssidBm       = 127;
+    int8_t  rssidBm       = OT_RADIO_RSSI_INVALID;
     int16_t rssiValSigned = 0;
     bool_t  stateChanged  = FALSE;
 
@@ -801,7 +808,7 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance)
     /* in RCP designs, the RSSI function is called while the radio is in
      * OT_RADIO_STATE_RECEIVE. Turn off the radio before reading RSSI,
      * otherwise we may end up waiting until a packet is received
-     * (in i16Radio_GetRSSI, while loop)
+     * (in i16MMAC_GetRSSI, while loop)
      */
 
     OSA_InterruptDisable();
@@ -815,7 +822,7 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance)
         stateChanged = TRUE;
     }
 
-    rssiValSigned = i16Radio_GetRSSI(0, FALSE, NULL);
+    rssiValSigned = i16MMAC_GetRSSI();
 
     if (stateChanged)
     {
@@ -824,6 +831,8 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance)
     }
 
     OSA_InterruptEnable();
+
+    otEXPECT((rssiValSigned != MMAC_INVALID_RSSI));
 
     rssiValSigned = i16Radio_BoundRssiValue(rssiValSigned);
 

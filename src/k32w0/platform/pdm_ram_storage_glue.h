@@ -35,15 +35,26 @@
 #ifndef PDM_RAM_STORAGE_GLUE_H_
 #define PDM_RAM_STORAGE_GLUE_H_
 
+#include "PDM.h"
 #include "ram_storage.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#if PDM_ENCRYPTION
+#ifndef PDM_CNF_ENC_ENABLED
+#define PDM_CNF_ENC_ENABLED 0x1 /* enable encryption */
+#endif
+
+#ifndef PDM_CNF_ENC_TMP_BUFF
+#define PDM_CNF_ENC_TMP_BUFF 0x2 /* input buffer is temporary, no need to protect it or use staging buffer */
+#endif
+#endif
+
 #if ENABLE_STORAGE_DYNAMIC_MEMORY
-/* pBuffer will be resized (if needed) in case it can't accomodate a new record */
-rsError ramStorageResize(ramBufferDescriptor **pBuffer, uint16_t aKey, const uint8_t *aValue, uint16_t aValueLength);
+/* pBuffer->buffer will be resized (if needed) in case it can't accomodate a new record */
+rsError ramStorageResize(ramBufferDescriptor *pBuffer, uint16_t aKey, const uint8_t *aValue, uint16_t aValueLength);
 #endif
 
 /* Return a RAM buffer with initialSize and populated with the contents of NVM ID - if found in flash
@@ -51,6 +62,19 @@ rsError ramStorageResize(ramBufferDescriptor **pBuffer, uint16_t aKey, const uin
  * In case static memory allocation is used, initialSize is unused
  */
 ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize);
+
+#if PDM_SAVE_IDLE
+PDM_teStatus FS_eSaveRecordDataInIdleTask(uint16_t u16IdValue, ramBufferDescriptor *pvDataBuffer);
+void         FS_vIdleTask(uint8_t u8WritesAllowed);
+#endif /* PDM_SAVE_IDLE */
+
+#if PDM_SAVE_IDLE
+/* Use RAM descriptor. FS_vIdleTask needs access to RAM buffer metadata */
+#define PDM_SaveRecord(id, descr) FS_eSaveRecordDataInIdleTask((uint16_t)id, descr)
+#else
+/* Use RAM descriptor buffer directly. No need for metadata on sync save. */
+#define PDM_SaveRecord(id, descr) PDM_eSaveRecordData((uint16_t)id, descr->buffer, descr->header.length)
+#endif /* PDM_SAVE_IDLE */
 
 #ifdef __cplusplus
 }

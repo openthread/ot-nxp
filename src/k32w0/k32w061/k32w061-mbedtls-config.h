@@ -245,4 +245,8 @@ void *pvPortCalloc(size_t num, size_t size); /*Calloc for HEAP3.*/
 /**************************** KSDK end ****************************************/
 #endif /* MBEDTLS_AES_ALT || MBEDTLS_SHA256_ALT */
 
+#if defined(MBEDTLS_USE_TINYCRYPT)
+#include <crypto/tinycrypt/inc/tinycrypt_check_config.h>
+#endif
+
 #endif // K32W061_MBEDTLS_CONFIG_H

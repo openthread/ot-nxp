@@ -27,6 +27,7 @@
 #
 
 option(OT_RCP_FLOW_CONTROL "enable UART flow control for RCP" OFF)
+option(OT_CLOCK_32K_SOURCE_FRO "enable using the FRO_32K instead of the XTAL as a clock source" OFF)
 
 SET_SOURCE_FILES_PROPERTIES($ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/gcc/startup_K32W061.c PROPERTIES LANGUAGE CXX)
 
@@ -84,6 +85,7 @@ if (SDK_RELEASE)
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/GPIO/GPIO_Adapter.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/RNG/Source/RNG.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/SecLib/SecLib.c
+        $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/SecLib/SecLib_ecp256_sw.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/OSAbstraction/Source/fsl_os_abstraction_bm.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6/fsl_xcvr.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/LowPower/Source/k32w061dk6/PWR.c
@@ -91,8 +93,8 @@ if (SDK_RELEASE)
     else()
 
     add_library(nxp-k32w061-driver
-        $ENV{NXP_K32W0_SDK_ROOT}/boards/k32w061dk6/utility/board_utility.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/boards/dk6/board.c
+        $ENV{NXP_K32W0_SDK_ROOT}/boards/k32w061dk6/utility/board_utility.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/openthread/boards/dk6_k32w061/hardware_init.c
         ${PROJECT_SOURCE_DIR}/third_party/k32w061_sdk/mr5_fixes/clock_config.c
         ${PROJECT_SOURCE_DIR}/third_party/k32w061_sdk/mr5_fixes/pin_mux.c
@@ -121,6 +123,7 @@ if (SDK_RELEASE)
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/GPIO/GPIO_Adapter.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/RNG/Source/RNG.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/SecLib/SecLib.c
+        $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/SecLib/SecLib_ecp256_sw.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/OSAbstraction/Source/fsl_os_abstraction_bm.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6/fsl_xcvr.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/LowPower/Source/jn518x/PWR.c
@@ -251,7 +254,6 @@ if (SDK_RELEASE)
             $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/RNG/Interface
             $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/GPIO
             $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/Keyboard/Interface
-            $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/boards/dk6
             $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/ModuleInfo
             $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/SecLib
             $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/Messaging/Interface
@@ -279,6 +281,32 @@ if (SDK_RELEASE)
     )
 endif()
 
+if (NOT BOARD_OVERRIDE)
+    target_include_directories(nxp-k32w061-driver
+        PUBLIC
+        $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/boards/dk6
+    )
+else()
+    target_include_directories(nxp-k32w061-driver
+        PUBLIC
+        $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/boards/${BOARD_OVERRIDE}
+    )
+
+    string(TOUPPER ${BOARD_OVERRIDE} EXTRA_BOARD_DEFINE)
+    target_compile_options(nxp-k32w061-driver
+        PUBLIC
+            -D${EXTRA_BOARD_DEFINE}=1
+    )
+endif()
+
+if (OT_BLE_SUPPORT)
+    target_include_directories(nxp-k32w061-driver
+        PUBLIC
+        $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/ieee-802.15.4/MacDynamic/Include
+    )
+
+endif()
+
 set(SDK_K32W0_LIBS
     $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/PDM/Library/libPDM.a
     $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/XCVR/lib/libRadio.a
@@ -286,12 +314,23 @@ set(SDK_K32W0_LIBS
     $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/ieee-802.15.4/lib/libMiniMac.a
 )
 
-#Disable ble support
-target_compile_definitions(nxp-k32w061-driver
-    PRIVATE
-        gSupportBle=0
-        SUPPORT_FOR_BLE=0
-)
+if (OT_BLE_SUPPORT)
+    list(APPEND SDK_K32W0_LIBS
+            $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/ieee-802.15.4/lib/libMiniMac_Sched.a
+        )
+    add_subdirectory(ble)
+    target_link_libraries(nxp-k32w061-driver PUBLIC nxp-k32w061-ble)
+else ()
+    list(APPEND SDK_K32W0_LIBS
+        $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/ieee-802.15.4/lib/libMiniMac.a
+    )
+    #Disable ble support
+    target_compile_definitions(nxp-k32w061-driver
+        PRIVATE
+            gSupportBle=0
+            SUPPORT_FOR_BLE=0
+    )
+endif()
 
 if (OT_APP_CLI OR OT_APP_RCP OR OT_APP_NCP)
     #Allows to not use the OSA main function
@@ -299,6 +338,23 @@ if (OT_APP_CLI OR OT_APP_RCP OR OT_APP_NCP)
         PRIVATE
             osCustomStartup=1
     )
+endif()
+
+if (OT_CLOCK_32K_SOURCE_FRO)
+    target_compile_definitions(nxp-k32w061-driver
+        PUBLIC
+            -DgClkUseFro32K=1
+    )
+
+    if (SDK_RELEASE)
+        target_sources(nxp-k32w061-driver PRIVATE
+            $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_fmeas.c
+        )
+    else()
+        target_sources(nxp-k32w061-driver PRIVATE
+            $ENV{NXP_K32W0_SDK_ROOT}/platform/drivers/fmeas/fsl_fmeas.c
+        )
+    endif()
 endif()
 
 target_link_libraries(nxp-k32w061-driver PUBLIC ${SDK_K32W0_LIBS})

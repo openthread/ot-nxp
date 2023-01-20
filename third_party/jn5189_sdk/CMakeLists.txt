@@ -70,6 +70,8 @@ if (SDK_RELEASE)
         $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SerialManager/Source/SerialManager.c
         $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SerialManager/Source/UART_Serial_Adapter.c
         $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/TimersManager/Source/TMR_Adapter.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SecLib/SecLib.c
+        $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/SecLib/SecLib_ecp256_sw.c
         $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/OSAbstraction/Source/fsl_os_abstraction_bm.c
     )
     else()
@@ -100,6 +102,8 @@ if (SDK_RELEASE)
         $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SerialManager/Source/SerialManager.c
         $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SerialManager/Source/UART_Serial_Adapter.c
         $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/TimersManager/Source/TMR_Adapter.c
+        $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SecLib/SecLib.c
+        $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/SecLib/SecLib_ecp256_sw.c
         $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/OSAbstraction/Source/fsl_os_abstraction_bm.c
         $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/aes/fsl_aes.c
         $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/common/fsl_common.c
@@ -182,6 +186,7 @@ if (SDK_RELEASE)
             $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/TimersManager/Source
             $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6/Build/Include
             $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SecLib
     )
     else()
     target_include_directories(nxp-jn5189-driver
@@ -213,6 +218,7 @@ if (SDK_RELEASE)
             $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/boards/dk6
             $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6/Build/Include
             $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/XCVR/DK6
+            $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SecLib
             $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/RNG/Interface
             $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/common
             $ENV{NXP_JN5189_SDK_ROOT}/platform/drivers/aes
@@ -238,6 +244,7 @@ endif()
 set(SDK_JN5189_LIBS
     $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/PDM/Library/libPDM.a
     $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/XCVR/lib/libRadio.a
+    $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/framework/SecLib/lib_crypto_m4.a
     $ENV{NXP_JN5189_SDK_ROOT}/middleware/wireless/ieee-802.15.4/lib/libMiniMac.a
 )
 
