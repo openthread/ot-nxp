@@ -36,6 +36,7 @@ OT_SRCDIR="$(pwd)"
 readonly OT_SRCDIR
 
 OT_OPTIONS=(
+    "-DBUILD_TESTING=OFF"
     "-DCMAKE_TOOLCHAIN_FILE=src/k32w0/k32w061/arm-none-eabi.cmake"
     "-DCMAKE_BUILD_TYPE=MinSizeRel"
     "-DOT_PLATFORM=external"
