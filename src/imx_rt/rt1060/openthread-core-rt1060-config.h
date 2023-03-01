@@ -136,16 +136,6 @@ LOG_MODULE_DEFINE(ot_stack_log, kLOG_LevelDebug)
 #endif
 
 /**
- * @def OPENTHREAD_CONFIG_CHILD_SUPERVISION_ENABLE
- *
- * Define to 1 to enable Child Supervision support.
- *
- */
-#ifndef OPENTHREAD_CONFIG_CHILD_SUPERVISION_ENABLE
-#define OPENTHREAD_CONFIG_CHILD_SUPERVISION_ENABLE 1
-#endif
-
-/**
  * @def OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
  *
  * Define to 1 to enable DHCPv6 Client support.
