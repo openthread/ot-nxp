@@ -26,6 +26,9 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
+set(UART_BAUD_RATE "115200" CACHE STRING "Uart baud rate")
+set(UART_INSTANCE "1" CACHE STRING "Uart instance for RCP comms")
+
 list(APPEND OT_PLATFORM_DEFINES
     "USE_NBU=${USE_NBU}"
     "CPU_K32W1480VFTA"
@@ -207,6 +210,15 @@ target_compile_definitions(nxp-k32w1-driver
     PUBLIC
         ${OT_PLATFORM_DEFINES}
 )
+if (OT_RCP_FLOW_CONTROL)
+    target_compile_definitions(nxp-k32w1-driver
+        PUBLIC
+             -DOT_APP_UART_BAUDRATE=${UART_BAUD_RATE}
+             -DSERIAL_MANAGER_RING_BUFFER_SIZE=320
+             -DOT_APP_SERIAL_PORT_USE_FC=1
+             -DOT_APP_UART_INSTANCE=${UART_INSTANCE}
+    )
+endif()
 
 target_compile_options(nxp-k32w1-driver
     PRIVATE

@@ -70,6 +70,10 @@ static serial_port_uart_config_t uartConfig = {
     .stopBitCount = kSerialManager_UartOneStopBit,
     .enableRx     = 1,
     .enableTx     = 1,
+#if (OT_APP_SERIAL_PORT_USE_FC == 1)
+    .enableRxRTS = 1,
+    .enableTxCTS = 1,
+#endif
 };
 
 static uint8_t                       s_ringBuffer[SERIAL_MANAGER_RING_BUFFER_SIZE];
@@ -87,6 +91,16 @@ volatile bool_t gTxFlush = FALSE;
 /* pending transmissions */
 volatile uint8_t gTxCntSerMgrIf = 0;
 
+#ifndef OT_APP_UART_CLK
+#if (OT_APP_UART_INSTANCE == 1U)
+#define OT_APP_UART_CLK kCLOCK_Lpuart1
+#elif (OT_APP_UART_INSTANCE == 0U)
+#define OT_APP_UART_CLK kCLOCK_Lpuart0
+#else
+#error Only LPUART0 or LPUART1 supported
+#endif
+#endif
+
 otError otPlatUartEnable(void)
 {
     serial_manager_status_t status;
@@ -103,9 +117,16 @@ otError otPlatUartEnable(void)
 #if (OT_APP_UART_INSTANCE == 1U)
     BOARD_InitPinLPUART1_TX();
     BOARD_InitPinLPUART1_RX();
+#if (OT_APP_SERIAL_PORT_USE_FC == 1)
+#error "Flow control not supported on LPUART instance 1"
+#endif
 #elif (OT_APP_UART_INSTANCE == 0U)
     BOARD_InitPinLPUART0_TX();
     BOARD_InitPinLPUART0_RX();
+#if (OT_APP_SERIAL_PORT_USE_FC == 1)
+    BOARD_InitPinLPUART0_RTS();
+    BOARD_InitPinLPUART0_CTS();
+#endif
 #else
 #error Only LPUART0 or LPUART1 supported
 #endif
