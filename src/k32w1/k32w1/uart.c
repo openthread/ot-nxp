@@ -49,7 +49,15 @@
 #include "fwk_platform_ot.h"
 #include "pin_mux.h"
 
+#include "platform-k32w1.h"
+
 #define FLUSH_TO_MS 500
+
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
+#if (OT_APP_LOG_UART_INSTANCE == OT_APP_UART_INSTANCE)
+#error "Need different UART instances for APP and LOG"
+#endif
+#endif
 
 extern void PWR_DisallowDeviceToSleep(void);
 extern void PWR_AllowDeviceToSleep(void);
@@ -83,6 +91,31 @@ static const serial_manager_config_t s_serialManagerConfig = {
     .ringBufferSize = SERIAL_MANAGER_RING_BUFFER_SIZE,
     .portConfig     = (serial_port_uart_config_t *)&uartConfig,
 };
+
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
+
+static SERIAL_MANAGER_HANDLE_DEFINE(otCliSerialLogHandle);
+static SERIAL_MANAGER_WRITE_HANDLE_DEFINE(otCliSerialLogWriteHandle);
+
+static uint8_t s_ringLogBuffer[SERIAL_MANAGER_RING_BUFFER_SIZE];
+
+static serial_port_uart_config_t logUartConfig = {
+    .instance     = OT_APP_LOG_UART_INSTANCE,
+    .baudRate     = 115200U,
+    .parityMode   = kSerialManager_UartParityDisabled,
+    .stopBitCount = kSerialManager_UartOneStopBit,
+    .enableRx     = 0,
+    .enableTx     = 1,
+};
+
+static const serial_manager_config_t s_serialManagerLogConfig = {
+    .type           = kSerialPort_Uart,
+    .ringBuffer     = &s_ringLogBuffer[0],
+    .ringBufferSize = SERIAL_MANAGER_RING_BUFFER_SIZE,
+    .portConfig     = (serial_port_uart_config_t *)&logUartConfig,
+};
+
+#endif
 
 static bool_t otPlatUartEnabled = FALSE;
 static bool_t sUartRxFired      = FALSE;
@@ -244,3 +277,64 @@ OT_TOOL_WEAK void otPlatUartReceived(const uint8_t *aBuf, uint16_t aBufLength)
     OT_UNUSED_VARIABLE(aBuf);
     OT_UNUSED_VARIABLE(aBufLength);
 }
+
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
+static void Uart_TxLogCallBack(void                              *pBuffer,
+                               serial_manager_callback_message_t *message,
+                               serial_manager_status_t            status)
+{
+    OT_UNUSED_VARIABLE(pBuffer);
+    OT_UNUSED_VARIABLE(message);
+    OT_UNUSED_VARIABLE(status);
+}
+
+void K32WLogInit()
+{
+    serial_manager_status_t status;
+    otError                 error = OT_ERROR_NONE;
+
+    /* set clock */
+    CLOCK_SetIpSrc(kCLOCK_Lpuart1, kCLOCK_IpSrcFro192M);
+    /* enable clock */
+    CLOCK_EnableClock(kCLOCK_Lpuart1);
+
+    logUartConfig.clockRate = CLOCK_GetIpFreq(kCLOCK_Lpuart1);
+
+#if (OT_APP_LOG_UART_INSTANCE == 1U)
+    BOARD_InitPinLPUART1_TX();
+    BOARD_InitPinLPUART1_RX();
+#elif (OT_APP_LOG_UART_INSTANCE == 0U)
+    BOARD_InitPinLPUART0_TX();
+    BOARD_InitPinLPUART0_RX();
+#else
+#error Only LPUART0 or LPUART1 supported
+#endif
+
+    status = SerialManager_Init((serial_handle_t)otCliSerialLogHandle, &s_serialManagerLogConfig);
+    otEXPECT_ACTION(status == kStatus_SerialManager_Success, error = OT_ERROR_FAILED);
+
+    SerialManager_OpenWriteHandle((serial_handle_t)otCliSerialLogHandle,
+                                  (serial_write_handle_t)otCliSerialLogWriteHandle);
+    SerialManager_InstallTxCallback((serial_write_handle_t)otCliSerialLogWriteHandle, Uart_TxLogCallBack, NULL);
+
+exit:
+    return;
+}
+
+/**
+ * Function used for blocking-write to the UART module.
+ *
+ * @param[in] aBuf             Pointer to the character buffer
+ * @param[in] len              Length of the character buffer
+ */
+void K32WWriteBlocking(const uint8_t *aBuf, uint32_t len)
+{
+    serial_manager_status_t status;
+
+    status = SerialManager_WriteNonBlocking((serial_write_handle_t)otCliSerialLogWriteHandle, (uint8_t *)aBuf, len);
+    otEXPECT(status == 0);
+
+exit:
+    return;
+}
+#endif /* (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED) */

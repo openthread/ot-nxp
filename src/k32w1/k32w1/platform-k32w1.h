@@ -87,4 +87,11 @@ void otPlatRadioInit(void);
  */
 void otPlatRadioProcess(otInstance *aInstance);
 
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
+/**
+ * This function initializes the platform defined logging.
+ *
+ */
+void K32WLogInit();
+#endif /* OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED */
 #endif // PLATFORM_K32W1_H_

@@ -36,11 +36,59 @@
 #include <openthread-core-config.h>
 #include <openthread/config.h>
 #endif
+#include <utils/code_utils.h>
 #include <openthread/platform/logging.h>
 #include <openthread/platform/toolchain.h>
 
-#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED) || \
-    (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_NCP_SPINEL)
+#include <stdio.h>
+#include <string.h>
+
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
+
+/* defines */
+#define TX_BUFFER_SIZE 256 /* Length of the send buffer */
+#define EOL_CHARS "\r\n"   /* End of Line Characters */
+#define EOL_CHARS_LEN 2    /* Length of EOL */
+
+/* static functions */
+static void K32WLogOutput(const char *aFormat, va_list ap);
+
+/* static variables */
+static char sTxBuffer[TX_BUFFER_SIZE + 1]; /* Transmit Buffer */
+
+OT_TOOL_WEAK void otPlatLog(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat, ...)
+{
+    OT_UNUSED_VARIABLE(aLogLevel);
+    OT_UNUSED_VARIABLE(aLogRegion);
+    va_list ap;
+
+    va_start(ap, aFormat);
+    K32WLogOutput(aFormat, ap);
+    va_end(ap);
+}
+
+/**
+ * Write Blocking data
+ *
+ * @param[in]    aFormat*     A pointer to the format string
+ * @param[in]    ap           Variable List Argument
+ *
+ */
+static void K32WLogOutput(const char *aFormat, va_list ap)
+{
+    int len = 0;
+    memset(sTxBuffer, 0, TX_BUFFER_SIZE + 1);
+    len = vsnprintf(sTxBuffer, TX_BUFFER_SIZE - EOL_CHARS_LEN, aFormat, ap);
+    otEXPECT(len >= 0);
+    memcpy(sTxBuffer + len, EOL_CHARS, EOL_CHARS_LEN);
+    len += EOL_CHARS_LEN;
+    extern void K32WWriteBlocking(const uint8_t *aBuf, uint32_t len);
+    K32WWriteBlocking((const uint8_t *)sTxBuffer, len);
+
+exit:
+    return;
+}
+#elif (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_NCP_SPINEL)
 OT_TOOL_WEAK void otPlatLog(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat, ...)
 {
     OT_UNUSED_VARIABLE(aLogLevel);

@@ -173,6 +173,9 @@ void otSysInit(int argc, char *argv[])
 #endif /*gAppButtonCnt_c > 0*/
 #endif /*gAppLowpowerEnabled_d*/
 #endif /*!defined(configUSE_TICKLESS_IDLE) || (defined(configUSE_TICKLESS_IDLE) && (configUSE_TICKLESS_IDLE==0))*/
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
+        K32WLogInit();
+#endif
     }
 
     otPlatRadioInit();
