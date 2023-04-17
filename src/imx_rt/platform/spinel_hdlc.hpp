@@ -120,6 +120,15 @@ public:
      */
     otError ResetConnection(void) { return OT_ERROR_NONE; }
 
+    /**
+     * This method hardware resets the RCP.
+     *
+     * @retval OT_ERROR_NONE             Successfully reset the RCP.
+     * @retval OT_ERROR_NOT_IMPLEMENTED  The hardware reset is not implemented.
+     *
+     */
+    otError HardwareReset(void) { return OT_ERROR_NOT_IMPLEMENTED; }
+
 private:
     enum
     {
