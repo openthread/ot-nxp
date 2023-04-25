@@ -59,6 +59,10 @@
 #endif
 #endif
 
+#if defined(OT_APP_SERIAL_PORT_USE_DMA) && defined(OT_APP_SERIAL_PORT_USE_FC)
+#error "Need to select either FC or DMA to use"
+#endif
+
 extern void PWR_DisallowDeviceToSleep(void);
 extern void PWR_AllowDeviceToSleep(void);
 
@@ -70,7 +74,7 @@ static void Uart_RxCallBack(void *pData, serial_manager_callback_message_t *mess
 static void Uart_TxCallBack(void *pBuffer, serial_manager_callback_message_t *message, serial_manager_status_t status);
 
 uint8_t rxBuffer[kReceiveBufferSize];
-
+#ifndef OT_APP_SERIAL_PORT_USE_DMA
 static serial_port_uart_config_t uartConfig = {
     .instance     = OT_APP_UART_INSTANCE,
     .baudRate     = OT_APP_UART_BAUDRATE,
@@ -83,6 +87,33 @@ static serial_port_uart_config_t uartConfig = {
     .enableTxCTS = 1,
 #endif
 };
+#else /* OT_APP_SERIAL_PORT_USE_DMA */
+#define LPUART_RX_DMA_CHANNEL 1U
+#define LPUART_TX_DMA_CHANNEL 0U
+
+static dma_channel_mux_configure_t   dma_mux_config = {.dma_dmamux_configure = {
+#if (OT_APP_UART_INSTANCE == 0U)
+                                                           .dma_rx_channel_mux = kDmaRequestLPUART0Rx,
+                                                           .dma_tx_channel_mux = kDmaRequestLPUART0Tx,
+#else
+                                                         .dma_rx_channel_mux = kDmaRequestLPUART1Rx,
+                                                         .dma_tx_channel_mux = kDmaRequestLPUART1Tx,
+#endif
+                                                     }};
+static serial_port_uart_dma_config_t uartConfig     = {
+        .instance                  = OT_APP_UART_INSTANCE,
+        .baudRate                  = OT_APP_UART_BAUDRATE,
+        .parityMode                = kSerialManager_UartParityDisabled,
+        .stopBitCount              = kSerialManager_UartOneStopBit,
+        .enableRx                  = 1,
+        .enableTx                  = 1,
+        .dma_instance              = 0,
+        .rx_channel                = LPUART_RX_DMA_CHANNEL,
+        .tx_channel                = LPUART_TX_DMA_CHANNEL,
+        .dma_channel_mux_configure = &dma_mux_config,
+};
+
+#endif /* OT_APP_SERIAL_PORT_USE_DMA */
 
 static uint8_t                       s_ringBuffer[SERIAL_MANAGER_RING_BUFFER_SIZE];
 static const serial_manager_config_t s_serialManagerConfig = {

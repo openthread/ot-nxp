@@ -176,6 +176,8 @@ if (SDK_RELEASE)
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_ccm32k.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_crc.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_wuu.c
+        $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_edma.c
+        $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_lpuart_edma.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/utilities/fsl_assert.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/utilities/debug_console/fsl_debug_console.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/utilities/str/fsl_str.c
@@ -199,6 +201,8 @@ else()
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/ccm32k/fsl_ccm32k.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/crc/fsl_crc.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/wuu/fsl_wuu.c
+        $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/dma3/fsl_edma.c
+        $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/lpuart/fsl_lpuart_edma.c
 )
 endif()
 
@@ -206,10 +210,6 @@ add_library(nxp-k32w1-driver
     ${K32W1_SDK_SOURCES}
 )
 
-target_compile_definitions(nxp-k32w1-driver
-    PUBLIC
-        ${OT_PLATFORM_DEFINES}
-)
 if (OT_RCP_FLOW_CONTROL)
     target_compile_definitions(nxp-k32w1-driver
         PUBLIC
@@ -219,6 +219,29 @@ if (OT_RCP_FLOW_CONTROL)
              -DOT_APP_UART_INSTANCE=${UART_INSTANCE}
     )
 endif()
+
+if (OT_RCP_UART_DMA)
+#    list(APPEND OT_PLATFORM_DEFINES
+#        "HAL_UART_DMA_ENABLE=1"
+#        "SERIAL_PORT_TYPE_UART_DMA=1"
+#    )
+    target_compile_definitions(nxp-k32w1-driver
+        PUBLIC
+             -DSERIAL_PORT_TYPE_UART_DMA=1
+             -DOT_APP_UART_BAUDRATE=${UART_BAUD_RATE}
+             -DSERIAL_MANAGER_RING_BUFFER_SIZE=320
+             -DOT_APP_UART_INSTANCE=${UART_INSTANCE}
+             -DHAL_UART_DMA_ENABLE=1
+             -DOT_APP_UART_TYPE=kSerialPort_UartDma
+             -DOT_APP_SERIAL_PORT_USE_DMA=1
+             -DLPUART_RING_BUFFER_SIZE=1024
+    )
+endif()
+
+target_compile_definitions(nxp-k32w1-driver
+    PUBLIC
+        ${OT_PLATFORM_DEFINES}
+)
 
 target_compile_options(nxp-k32w1-driver
     PRIVATE
@@ -309,6 +332,7 @@ else()
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/lpspi
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/imu
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/wuu
+        $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/dma3
         $ENV{NXP_K32W1_SDK_ROOT}/platform/utilities/misc_utilities
         $ENV{NXP_K32W1_SDK_ROOT}/platform/utilities/debug_console
         $ENV{NXP_K32W1_SDK_ROOT}/platform/utilities/str
