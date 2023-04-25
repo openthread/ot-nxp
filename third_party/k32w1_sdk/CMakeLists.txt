@@ -45,7 +45,6 @@ list(APPEND OT_PLATFORM_DEFINES
     "gUnmirroredFeatureSet_d=1"
     "gNvFragmentation_Enabled_d=1"
     "gAppButtonCnt_c=2"
-    "gAppLowpowerEnabled_d=1"
     "gBleBondIdentityHeaderSize_c=56"
     "gPlatformShutdownEccRamInLowPower=0"
     "gMemManagerLightExtendHeapAreaUsage=1"
@@ -59,6 +58,16 @@ if (USE_NBU)
     set_property(SOURCE ${PROJECT_SOURCE_DIR}/src/k32w1/k32w1/startup_K32W1480.S PROPERTY LANGUAGE C)
 else()
     set_property(SOURCE $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/gcc/startup_K32W1480.S PROPERTY LANGUAGE C)
+endif()
+
+if (OT_APP_LOWPOWER)
+    list(APPEND OT_PLATFORM_DEFINES
+        "gAppLowpowerEnabled_d=1"
+    )
+else()
+    list(APPEND OT_PLATFORM_DEFINES
+        "gAppLowpowerEnabled_d=0"
+    )
 endif()
 
 set(K32W1_SDK_SOURCES
