@@ -60,6 +60,15 @@ OT_OPTIONS_RCP_ONLY_UART_FLOW_CONTROL=(
 )
 readonly OT_OPTIONS_RCP_ONLY_UART_FLOW_CONTROL
 
+OT_OPTIONS_RCP_ONLY_UART_DMA=(
+    "-DOT_RCP_UART_DMA=ON"
+    "-DOT_APP_CLI=OFF"
+    "-DOT_FTD=OFF"
+    "-DOT_MTD=OFF"
+    "-DUART_BAUD_RATE=1000000"
+)
+readonly OT_OPTIONS_RCP_ONLY_UART_DMA
+
 OT_OPTIONS_NO_RCP=(
     "-DOT_APP_NCP=OFF"
     "-DOT_APP_RCP=OFF"
@@ -107,6 +116,23 @@ build_ot_rcp_only_uart_flow_control()
     fi
 
 }
+
+build_ot_rcp_only_uart_dma()
+{
+    echo "Building OT RCP image UART with DMA..."
+    app_folder_name="rcp_only_uart_dma"
+    local options=("${OT_OPTIONS_RCP_ONLY_UART_DMA[@]}")
+    options+=("${OT_OPTIONS[@]}")
+    options+=("$@")
+    options+=(" -DSDK_RELEASE=$SDK_RELEASE")
+    build "${app_folder_name}" "${options[@]}"
+
+    if [ $? -eq 1 ]; then
+        exit 1
+    fi
+
+}
+
 build_ot_without_rcp_image()
 {
     echo "Building OT without RCP image ..."
@@ -128,14 +154,17 @@ create_directory_and_build()
 {
     if [ "$1" == 'all' ]; then
         build_ot_rcp_only_uart_flow_control "$@"
+        build_ot_rcp_only_uart_dma "$@"
         build_ot_without_rcp_image "$@"
 
     elif [ "$1" == 'ot_rcp_only_uart_flow_control' ]; then
         build_ot_rcp_only_uart_flow_control "$@"
+    elif [ "$1" == 'ot_rcp_only_uart_dma' ]; then
+        build_ot_rcp_only_uart_dma "$@"
     elif [ "$1" == 'ot_without_rcp_image' ]; then
         build_ot_without_rcp_image "$@"
     else
-        echo >&2 "Unsupported action: $1. Supported: all, ot_rcp_only_uart_flow_control, ot_without_rcp_image"
+        echo >&2 "Unsupported action: $1. Supported: all, ot_rcp_only_uart_flow_control, ot_rcp_only_uart_dma, ot_without_rcp_image"
         # 128 for Invalid arguments
         exit 128
     fi
