@@ -226,6 +226,14 @@
 #define OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE 4096
 #endif
 
+/*
+ * Always make sure that the hdlc encoder is bigger that the NCP spinel TX buffer
+ * In fact some issues could happen if the HDLC encoder buffer is smaller that the spinel TX buffer.
+ * So to avoid such issue we always make sure that the hdlc encoder is bigger that the NCP spinel TX buffer.
+ *
+ */
+#define OPENTHREAD_CONFIG_NCP_HDLC_TX_CHUNK_SIZE OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE + 1024
+
 /**
  * @def OPENTHREAD_CONFIG_MLE_MAX_CHILDREN
  *
