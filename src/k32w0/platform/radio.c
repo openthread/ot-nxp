@@ -105,10 +105,38 @@ extern void BOARD_GetCoexIoCfg(void **rfDeny, void **rfActive, void **rfStatus);
 #endif
 
 /* check IEEE Std. 802.15.4 - 2015: Table 8-81 - MAC sublayer constants */
+#ifndef MAC_TX_RETRIES
 #define MAC_TX_RETRIES (3)
+#endif
+
+#ifndef MAC_TX_CSMA_MIN_BE
 #define MAC_TX_CSMA_MIN_BE (3)
+#endif
+
+#ifndef MAC_TX_CSMA_MAX_BE
 #define MAC_TX_CSMA_MAX_BE (5)
+#endif
+
+#ifndef MAC_TX_CSMA_MAX_BACKOFFS
 #define MAC_TX_CSMA_MAX_BACKOFFS (4)
+#endif
+
+/* Ensure MAC sublayer constants adhere to the spec ranges. */
+#if (MAC_TX_RETRIES < 0) || (MAC_TX_RETRIES > 7)
+#error "MAC_TX_RETRIES must be in range [0, 7]"
+#endif
+
+#if (MAC_TX_CSMA_MIN_BE < 0) || (MAC_TX_CSMA_MIN_BE > MAC_TX_CSMA_MAX_BE)
+#error "MAC_TX_CSMA_MIN_BE must be in range [0, MAC_TX_CSMA_MAX_BE]"
+#endif
+
+#if (MAC_TX_CSMA_MAX_BE < 3) || (MAC_TX_CSMA_MAX_BE > 8)
+#error "MAC_TX_CSMA_MAX_BE must be in range [3, 8]"
+#endif
+
+#if (MAC_TX_CSMA_MAX_BACKOFFS < 0) || (MAC_TX_CSMA_MAX_BACKOFFS > 5)
+#error "MAC_TX_CSMA_MAX_BACKOFFS must be in range [0, 5]"
+#endif
 
 #define TX_TO 544 /* symbols. 2 max length frames + AIFS */
 

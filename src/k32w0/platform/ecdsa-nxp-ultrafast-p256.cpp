@@ -49,13 +49,13 @@ otError otPlatCryptoEcdsaGenerateKey(otPlatCryptoEcdsaKeyPair *aKeyPair)
     ecp256KeyPair_t keypair;
     int             ret;
 
-    ret = ECP256_GenerateKeyPair(&keypair.public_key, &keypair.private_key);
+    ret = ECP256_GenerateKeyPair(&keypair.public_key, &keypair.private_key, NULL);
     VerifyOrExit(ret == gSecEcp256Success_c);
 
-    memcpy(aKeyPair->mDerBytes, &keypair.public_key, 2 * ECP256_COORDINATE_LEN);
-    memcpy(aKeyPair->mDerBytes + (2 * ECP256_COORDINATE_LEN), &keypair.private_key, ECP256_COORDINATE_LEN);
+    memcpy(aKeyPair->mDerBytes, &keypair.public_key, 2 * SEC_ECP256_COORDINATE_LEN);
+    memcpy(aKeyPair->mDerBytes + (2 * SEC_ECP256_COORDINATE_LEN), &keypair.private_key, SEC_ECP256_COORDINATE_LEN);
 
-    aKeyPair->mDerLength = static_cast<uint8_t>(3 * ECP256_COORDINATE_LEN);
+    aKeyPair->mDerLength = static_cast<uint8_t>(3 * SEC_ECP256_COORDINATE_LEN);
 
 exit:
     return (ret >= 0) ? kErrorNone : MbedTls::MapError(ret);
@@ -63,7 +63,7 @@ exit:
 
 otError otPlatCryptoEcdsaGetPublicKey(const otPlatCryptoEcdsaKeyPair *aKeyPair, otPlatCryptoEcdsaPublicKey *aPublicKey)
 {
-    memcpy(aPublicKey->m8, aKeyPair->mDerBytes, 2 * ECP256_COORDINATE_LEN);
+    memcpy(aPublicKey->m8, aKeyPair->mDerBytes, 2 * SEC_ECP256_COORDINATE_LEN);
 
 exit:
     return kErrorNone;
@@ -77,7 +77,8 @@ otError otPlatCryptoEcdsaSign(const otPlatCryptoEcdsaKeyPair *aKeyPair,
     ecp256KeyPair_t keypair;
     int             ret;
 
-    memcpy(keypair.private_key.raw_8bit, aKeyPair->mDerBytes + (2 * ECP256_COORDINATE_LEN), ECP256_COORDINATE_LEN);
+    memcpy(keypair.private_key.raw_8bit, aKeyPair->mDerBytes + (2 * SEC_ECP256_COORDINATE_LEN),
+           SEC_ECP256_COORDINATE_LEN);
 
     ret = ECDSA_SignFromHash(aSignature->m8, aHash->m8, Sha256::Hash::kSize, keypair.private_key.raw_8bit);
     VerifyOrExit(ret == gSecEcdsaSuccess_c, error = MbedTls::MapError(ret));
