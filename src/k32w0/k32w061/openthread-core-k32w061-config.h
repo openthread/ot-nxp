@@ -342,7 +342,26 @@
 #endif
 
 /**
- * @def OPENTHREAD_CONFIG_CSL_MIN_RECEIVE_ON
+ * @def OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AHEAD
+ *
+ * The minimum time (in microseconds) before the MHR start that the radio should be in receive state and ready to
+ * properly receive in order to properly receive any IEEE 802.15.4 frame.
+ *
+ * Set to zero since on k32w0 radio will automatically wake up much earlier
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AHEAD
+#define OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AHEAD 0
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_CSL_MIN_RECEIVE_ON_AFTER
+ *
+ * The minimum time (in microseconds) after the MHR start that the radio should be in receive state in order
+ * to properly receive any IEEE 802.15.4 frame.
+ *
+ * Set to maximum frame size since on k32w0 OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AHEAD is set to 0 and radio wakes up
+ * OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD us before CSL period
  *
  * The minimum CSL receive window (in microseconds) required to receive an IEEE 802.15.4 frame.
  * - Maximum frame size with preamble: 6*2+127*2 symbols
@@ -351,8 +370,8 @@
  * (destination PAN ID, extended destination/source address, CSL IE)
  *
  */
-#ifndef OPENTHREAD_CONFIG_CSL_MIN_RECEIVE_ON
-#define OPENTHREAD_CONFIG_CSL_MIN_RECEIVE_ON 368 * 16
+#ifndef OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AFTER
+#define OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AFTER 368 * 16
 #endif
 
 /* Should cover Tx tune time (warm-up) + encryption time +
