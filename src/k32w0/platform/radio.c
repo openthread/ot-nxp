@@ -47,6 +47,7 @@
 #include "openthread-system.h"
 
 #include <utils/code_utils.h>
+#include <utils/encoding.h>
 #include <utils/mac_frame.h>
 #include "utils/link_metrics.h"
 
@@ -660,15 +661,13 @@ otError otPlatRadioClearSrcMatchExtEntry(otInstance *aInstance, const otExtAddre
         tmp.m8[i] = aExtAddress->m8[sizeof(*aExtAddress) - 1 - i];
     }
 
-    uint32_t v1 = *(uint32_t *)tmp.m8;
-    uint32_t v2 = *(uint32_t *)(tmp.m8 + sizeof(uint32_t));
+    uint64_t v = otEncodingReadUint64Le(tmp.m8);
 
     for (; idx < MAX_FP_ADDRS; idx++)
     {
-        uint32_t t1 = *(uint32_t *)sFpExtAddr[idx].extAddr.m8;
-        uint32_t t2 = *(uint32_t *)(sFpExtAddr[idx].extAddr.m8 + sizeof(uint32_t));
+        uint64_t t = otEncodingReadUint64Le(sFpExtAddr[idx].extAddr.m8);
 
-        if (BIT_TST(sFpExtAddrMask, idx) && (t1 == v1) && (t2 == v2))
+        if (BIT_TST(sFpExtAddrMask, idx) && (t == v))
         {
             BIT_CLR(sFpExtAddrMask, idx);
             error = OT_ERROR_NONE;
@@ -1183,15 +1182,13 @@ static bool K32WCheckIfFpRequired(tsPhyFrame *aRxFrame)
     else if (srcAddr.mType == OT_MAC_ADDRESS_TYPE_EXTENDED)
     {
         /* srcAddr.mAddress.mExtAddress is returned in reverse order (big endian) */
-        uint32_t v1 = *(uint32_t *)srcAddr.mAddress.mExtAddress.m8;
-        uint32_t v2 = *(uint32_t *)(srcAddr.mAddress.mExtAddress.m8 + sizeof(uint32_t));
+        uint64_t v = otEncodingReadUint64Le(srcAddr.mAddress.mExtAddress.m8);
 
         for (idx = 0; idx < MAX_FP_ADDRS; idx++)
         {
-            uint32_t t1 = *(uint32_t *)sFpExtAddr[idx].extAddr.m8;
-            uint32_t t2 = *(uint32_t *)(sFpExtAddr[idx].extAddr.m8 + sizeof(uint32_t));
+            uint64_t t = otEncodingReadUint64Le(sFpExtAddr[idx].extAddr.m8);
 
-            if (BIT_TST(sFpExtAddrMask, idx) && (t1 == v1) && (t2 == v2))
+            if (BIT_TST(sFpExtAddrMask, idx) && (t == v))
             {
                 isFpRequired = TRUE;
                 break;
