@@ -39,7 +39,7 @@
 #include "spinel_hdlc.hpp"
 #include <lib/spinel/radio_spinel.hpp>
 
-static ot::Spinel::RadioSpinel<ot::RT::HdlcInterface, otInstance> sRadioSpinel;
+static ot::Spinel::RadioSpinel<ot::RT::HdlcInterface> sRadioSpinel;
 
 void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64)
 {
@@ -372,5 +372,5 @@ void otPlatRadioDeinit(void)
 
 void otPlatRadioProcess(const otInstance *aInstance)
 {
-    sRadioSpinel.Process(*aInstance);
+    sRadioSpinel.Process(aInstance);
 }

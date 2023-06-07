@@ -111,7 +111,7 @@ public:
      * @param[in]  aInstance  The ot instance
      *
      */
-    void Process(const otInstance &aInstance);
+    void Process(const void *aContext);
 
     /**
      * This method is called when RCP is reset to recreate the connection with it.
