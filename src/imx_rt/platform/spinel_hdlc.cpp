@@ -134,9 +134,9 @@ exit:
     return error;
 }
 
-void HdlcInterface::Process(const otInstance &aInstance)
+void HdlcInterface::Process(const void *aContext)
 {
-    OT_UNUSED_VARIABLE(aInstance);
+    OT_UNUSED_VARIABLE(aContext);
     TryReadAndDecode(false);
 }
 
