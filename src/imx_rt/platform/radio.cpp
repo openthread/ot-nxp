@@ -362,7 +362,7 @@ otRadioState otPlatRadioGetState(otInstance *aInstance)
 void otPlatRadioInit(void)
 {
     sRadioSpinel.GetSpinelInterface().Init();
-    sRadioSpinel.Init(true, false, false);
+    sRadioSpinel.Init(true, false);
 }
 
 void otPlatRadioDeinit(void)
