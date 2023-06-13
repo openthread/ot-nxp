@@ -33,6 +33,8 @@
 
 #include "fsl_component_serial_manager.h"
 
+#include "lib/hdlc/hdlc.hpp"
+#include "lib/spinel/multi_frame_buffer.hpp"
 #include "lib/spinel/spinel_interface.hpp"
 
 namespace ot {
@@ -144,9 +146,9 @@ private:
     void                                             *mReceiveFrameContext;
     ot::Spinel::SpinelInterface::RxFrameBuffer       &mReceiveFrameBuffer;
 
-    ot::Hdlc::FrameBuffer<ot::Spinel::SpinelInterface::kMaxFrameSize> encoderBuffer;
-    ot::Hdlc::Encoder                                                 mHdlcEncoder;
-    ot::Hdlc::Decoder                                                 mHdlcDecoder;
+    ot::Spinel::FrameBuffer<ot::Spinel::SpinelInterface::kMaxFrameSize> encoderBuffer;
+    ot::Hdlc::Encoder                                                   mHdlcEncoder;
+    ot::Hdlc::Decoder                                                   mHdlcDecoder;
 
     uint8_t  s_ringBuffer[kMaxRingBufferSize];
     void     InitUart(void);
