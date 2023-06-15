@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2022, The OpenThread Authors.
+ *  Copyright (c) 2022-2023, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -37,7 +37,6 @@
 
 #include OPENTHREAD_PLATFORM_CORE_CONFIG_FILE
 
-#include "AspInterface.h"
 #include "EmbeddedTypes.h"
 #include "FunctionLib.h"
 #include "Phy.h"
@@ -148,6 +147,8 @@ static extendedRadioFrame *PopRxRingBuffer(rxRingBuffer *aRxRing);
 static bool                IsEmptyRxRingBuffer(rxRingBuffer *aRxRing);
 static unsigned char       NAvailableRxBuffers(rxRingBuffer *aRxRing);
 
+static uint8_t ot_phy_ctx = (uint8_t)(-1);
+
 /**
  * Stub function used for controlling low power mode
  *
@@ -191,12 +192,11 @@ void otPlatRadioSetPanId(otInstance *aInstance, uint16_t aPanId)
 
     macToPlmeMessage_t msg;
 
-    msg.macInstance                      = 0;
     msg.msgType                          = gPlmeSetReq_c;
     msg.msgData.setReq.PibAttribute      = gPhyPibPanId_c;
     msg.msgData.setReq.PibAttributeValue = (uint64_t)aPanId;
 
-    (void)MAC_PLME_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 
     sPanId = aPanId;
 }
@@ -207,12 +207,11 @@ void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aE
 
     macToPlmeMessage_t msg;
 
-    msg.macInstance                      = 0;
     msg.msgType                          = gPlmeSetReq_c;
     msg.msgData.setReq.PibAttribute      = gPhyPibLongAddress_c;
     msg.msgData.setReq.PibAttributeValue = *(uint64_t *)aExtAddress->m8;
 
-    (void)MAC_PLME_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 }
 
 void otPlatRadioSetShortAddress(otInstance *aInstance, uint16_t aShortAddress)
@@ -221,12 +220,11 @@ void otPlatRadioSetShortAddress(otInstance *aInstance, uint16_t aShortAddress)
 
     macToPlmeMessage_t msg;
 
-    msg.macInstance                      = 0;
     msg.msgType                          = gPlmeSetReq_c;
     msg.msgData.setReq.PibAttribute      = gPhyPibShortAddress_c;
     msg.msgData.setReq.PibAttributeValue = (uint64_t)aShortAddress;
 
-    (void)MAC_PLME_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 }
 
 otError otPlatRadioEnable(otInstance *aInstance)
@@ -305,12 +303,11 @@ otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel)
     if (sunRxMode)
     {
         // restart Rx on idle only if it was enabled
-        msg.macInstance                      = 0;
         msg.msgType                          = gPlmeSetReq_c;
         msg.msgData.setReq.PibAttribute      = gPhyPibRxOnWhenIdle;
         msg.msgData.setReq.PibAttributeValue = (uint64_t)1;
 
-        phy_status = MAC_PLME_SapHandler(&msg, 0);
+        phy_status = MAC_PLME_SapHandler(&msg, ot_phy_ctx);
         if (phy_status != gPhySuccess_c)
         {
             status = OT_ERROR_INVALID_STATE;
@@ -324,29 +321,30 @@ void otPlatRadioEnableSrcMatch(otInstance *aInstance, bool aEnable)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    AppToAspMessage_t msg;
+    macToPlmeMessage_t msg;
 
-    msg.msgType             = aspMsgTypeSetSAMState_c;
-    msg.msgData.aspSAMState = aEnable;
+    msg.msgType          = gPlmeSetSAMState_c;
+    msg.msgData.SAMState = aEnable;
 
-    (void)APP_ASP_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 }
 
 otError otPlatRadioAddSrcMatchShortEntry(otInstance *aInstance, const uint16_t aShortAddress)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    otError           status = OT_ERROR_NONE;
-    AppToAspMessage_t msg;
+    otError            status = OT_ERROR_NONE;
+    macToPlmeMessage_t msg;
 
-    msg.msgType                     = aspMsgTypeAddToSapTable_c;
-    msg.msgData.aspDeviceAddr.mode  = 2;
-    msg.msgData.aspDeviceAddr.panId = sPanId;
+    msg.msgType                  = gPlmeAddToSapTable_c;
+    msg.msgData.deviceAddr.mode  = 2;
+    msg.msgData.deviceAddr.panId = sPanId;
 
-    memcpy(msg.msgData.aspDeviceAddr.addr, (uint8_t *)&aShortAddress, 2);
+    memcpy(msg.msgData.deviceAddr.addr, (uint8_t *)&aShortAddress, 2);
 
-    if (0 != APP_ASP_SapHandler(&msg, 0))
+    if (gPhySuccess_c != MAC_PLME_SapHandler(&msg, ot_phy_ctx))
     {
+        /* the status is not returned from PHY over RPMSG */
         status = OT_ERROR_NO_BUFS;
     }
 
@@ -357,17 +355,18 @@ otError otPlatRadioAddSrcMatchExtEntry(otInstance *aInstance, const otExtAddress
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    otError           status = OT_ERROR_NONE;
-    AppToAspMessage_t msg;
+    otError            status = OT_ERROR_NONE;
+    macToPlmeMessage_t msg;
 
-    msg.msgType                     = aspMsgTypeAddToSapTable_c;
-    msg.msgData.aspDeviceAddr.mode  = 3;
-    msg.msgData.aspDeviceAddr.panId = sPanId;
+    msg.msgType                  = gPlmeAddToSapTable_c;
+    msg.msgData.deviceAddr.mode  = 3;
+    msg.msgData.deviceAddr.panId = sPanId;
 
-    memcpy(msg.msgData.aspDeviceAddr.addr, (uint8_t *)aExtAddress, 8);
+    memcpy(msg.msgData.deviceAddr.addr, (uint8_t *)aExtAddress, 8);
 
-    if (0 != APP_ASP_SapHandler(&msg, 0))
+    if (gPhySuccess_c != MAC_PLME_SapHandler(&msg, ot_phy_ctx))
     {
+        /* the status is not returned from PHY over RPMSG */
         status = OT_ERROR_NO_BUFS;
     }
 
@@ -378,17 +377,18 @@ otError otPlatRadioClearSrcMatchShortEntry(otInstance *aInstance, const uint16_t
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    otError           status = OT_ERROR_NONE;
-    AppToAspMessage_t msg;
+    otError            status = OT_ERROR_NONE;
+    macToPlmeMessage_t msg;
 
-    msg.msgType                     = aspMsgTypeRemoveFromSAMTable_c;
-    msg.msgData.aspDeviceAddr.mode  = 2;
-    msg.msgData.aspDeviceAddr.panId = sPanId;
+    msg.msgType                  = gPlmeRemoveFromSAMTable_c;
+    msg.msgData.deviceAddr.mode  = 2;
+    msg.msgData.deviceAddr.panId = sPanId;
 
-    memcpy(msg.msgData.aspDeviceAddr.addr, (uint8_t *)&aShortAddress, 2);
+    memcpy(msg.msgData.deviceAddr.addr, (uint8_t *)&aShortAddress, 2);
 
-    if (0 != APP_ASP_SapHandler(&msg, 0))
+    if (gPhySuccess_c != MAC_PLME_SapHandler(&msg, ot_phy_ctx))
     {
+        /* the status is not returned from PHY over RPMSG */
         status = OT_ERROR_NO_ADDRESS;
     }
 
@@ -399,17 +399,18 @@ otError otPlatRadioClearSrcMatchExtEntry(otInstance *aInstance, const otExtAddre
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    otError           status = OT_ERROR_NONE;
-    AppToAspMessage_t msg;
+    otError            status = OT_ERROR_NONE;
+    macToPlmeMessage_t msg;
 
-    msg.msgType                     = aspMsgTypeRemoveFromSAMTable_c;
-    msg.msgData.aspDeviceAddr.mode  = 3;
-    msg.msgData.aspDeviceAddr.panId = sPanId;
+    msg.msgType                  = gPlmeRemoveFromSAMTable_c;
+    msg.msgData.deviceAddr.mode  = 3;
+    msg.msgData.deviceAddr.panId = sPanId;
 
-    memcpy(msg.msgData.aspDeviceAddr.addr, (uint8_t *)aExtAddress, 8);
+    memcpy(msg.msgData.deviceAddr.addr, (uint8_t *)aExtAddress, 8);
 
-    if (0 != APP_ASP_SapHandler(&msg, 0))
+    if (gPhySuccess_c != MAC_PLME_SapHandler(&msg, ot_phy_ctx))
     {
+        /* the status is not returned from PHY over RPMSG */
         status = OT_ERROR_NO_ADDRESS;
     }
 
@@ -420,14 +421,14 @@ void otPlatRadioClearSrcMatchShortEntries(otInstance *aInstance)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    // PhyResetNeighborTable();
+    /* This must be implemented */
 }
 
 void otPlatRadioClearSrcMatchExtEntries(otInstance *aInstance)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    // PhyResetNeighborTable();
+    /* This must be implemented */
 }
 
 otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *aInstance)
@@ -450,7 +451,6 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
 
     rf_set_channel(aFrame->mChannel);
 
-    msg->macInstance                 = 0;
     msg->msgType                     = gPdDataReq_c;
     msg->msgData.dataReq.slottedTx   = gPhyUnslottedMode_c;
     msg->msgData.dataReq.psduLength  = aFrame->mLength;
@@ -525,7 +525,7 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
     }
 #endif
 
-    phy_status = MAC_PD_SapHandler(msg, 0);
+    phy_status = MAC_PD_SapHandler(msg, ot_phy_ctx);
     if (phy_status == gPhySuccess_c)
     {
         sTxStatus = OT_ERROR_NONE;
@@ -543,11 +543,15 @@ exit:
 int8_t otPlatRadioGetRssi(otInstance *aInstance)
 {
     OT_UNUSED_VARIABLE(aInstance);
-    AppToAspMessage_t msg;
+    macToPlmeMessage_t msg;
 
-    msg.msgType = aspMsgTypeGetRSSILevel_c;
+    msg.msgType                          = gPlmeGetReq_c;
+    msg.msgData.getReq.PibAttribute      = gPhyGetRSSILevel_c;
+    msg.msgData.getReq.PibAttributeValue = 127; /* RSSI is invalid*/
 
-    return APP_ASP_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
+
+    return (int8_t)msg.msgData.getReq.PibAttributeValue;
 }
 
 otRadioCaps otPlatRadioGetCaps(otInstance *aInstance)
@@ -577,12 +581,11 @@ void otPlatRadioSetPromiscuous(otInstance *aInstance, bool aEnable)
     macToPlmeMessage_t msg;
     sPromiscuousEnable = aEnable;
 
-    msg.macInstance                      = 0;
     msg.msgType                          = gPlmeSetReq_c;
     msg.msgData.setReq.PibAttribute      = gPhyPibPromiscuousMode_c;
     msg.msgData.setReq.PibAttributeValue = (uint64_t)aEnable;
 
-    (void)MAC_PLME_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 }
 
 otError otPlatRadioEnergyScan(otInstance *aInstance, uint8_t aScanChannel, uint16_t aScanDuration)
@@ -603,12 +606,11 @@ otError otPlatRadioEnergyScan(otInstance *aInstance, uint8_t aScanChannel, uint1
     sMaxED = -128;
     rf_set_channel(aScanChannel);
 
-    msg.macInstance                      = 0;
     msg.msgType                          = gPlmeEdReq_c;
     msg.msgData.edReq.startTime          = gPhySeqStartAsap_c;
     msg.msgData.edReq.measureDurationSym = (aScanDuration * 1000) / OT_RADIO_SYMBOL_TIME;
 
-    phy_status = MAC_PLME_SapHandler(&msg, 0);
+    phy_status = MAC_PLME_SapHandler(&msg, ot_phy_ctx);
     if (phy_status != gPhySuccess_c)
     {
         status = OT_ERROR_INVALID_STATE;
@@ -677,7 +679,7 @@ otError otPlatRadioConfigureEnhAckProbing(otInstance          *aInstance,
     otMacAddress macAddress;
     macAddress.mType                  = OT_MAC_ADDRESS_TYPE_SHORT;
     macAddress.mAddress.mShortAddress = aShortAddress;
-    AppToAspMessage_t msg;
+    macToPlmeMessage_t msg;
 
     error = otLinkMetricsConfigureEnhAckProbing(aShortAddress, aExtAddress, aLinkMetrics);
     otEXPECT(error == OT_ERROR_NONE);
@@ -686,20 +688,20 @@ otError otPlatRadioConfigureEnhAckProbing(otInstance          *aInstance,
 
     if (ieDataLen > 0)
     {
-        ieDataLen = otMacFrameGenerateEnhAckProbingIe(msg.msgData.aspAckIeData.data, NULL, ieDataLen);
+        ieDataLen = otMacFrameGenerateEnhAckProbingIe(msg.msgData.AckIeData.data, NULL, ieDataLen);
     }
 
     ieParam = (aLinkMetrics.mLqi > 0 ? IeData_Lqi_c : 0) | (aLinkMetrics.mLinkMargin > 0 ? IeData_LinkMargin_c : 0) |
               (aLinkMetrics.mRssi > 0 ? IeData_Rssi_c : 0);
 
     /* If ieDataLen remains 0 we will delete the IE data */
-    msg.msgType                    = aspMsgTypeConfigureAckIeData_c;
-    msg.msgData.aspAckIeData.param = (ieDataLen > 0 ? IeData_MSB_VALID_DATA : 0);
-    msg.msgData.aspAckIeData.param |= ieParam;
-    msg.msgData.aspAckIeData.shortAddr = aShortAddress;
-    memcpy(msg.msgData.aspAckIeData.extAddr, aExtAddress, 8);
+    msg.msgType                 = gPlmeConfigureAckIeData_c;
+    msg.msgData.AckIeData.param = (ieDataLen > 0 ? IeData_MSB_VALID_DATA : 0);
+    msg.msgData.AckIeData.param |= ieParam;
+    msg.msgData.AckIeData.shortAddr = aShortAddress;
+    memcpy(msg.msgData.AckIeData.extAddr, aExtAddress, 8);
 
-    (void)APP_ASP_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 
 exit:
     return error;
@@ -717,19 +719,19 @@ void otPlatRadioSetMacKey(otInstance             *aInstance,
     OT_UNUSED_VARIABLE(aInstance);
     OT_UNUSED_VARIABLE(aKeyIdMode);
 
-    AppToAspMessage_t msg;
+    macToPlmeMessage_t msg;
 
     assert(aKeyType == OT_KEY_TYPE_LITERAL_KEY);
     assert(aPrevKey != NULL && aCurrKey != NULL && aNextKey != NULL);
 
-    msg.msgType                     = aspMsgTypeSetMacKey_c;
-    msg.msgData.aspMacKeyData.keyId = aKeyId;
+    msg.msgType                  = gPlmeSetMacKey_c;
+    msg.msgData.MacKeyData.keyId = aKeyId;
 
-    memcpy(msg.msgData.aspMacKeyData.prevKey, aPrevKey, 16);
-    memcpy(msg.msgData.aspMacKeyData.currKey, aCurrKey, 16);
-    memcpy(msg.msgData.aspMacKeyData.nextKey, aNextKey, 16);
+    memcpy(msg.msgData.MacKeyData.prevKey, aPrevKey, 16);
+    memcpy(msg.msgData.MacKeyData.currKey, aCurrKey, 16);
+    memcpy(msg.msgData.MacKeyData.nextKey, aNextKey, 16);
 
-    (void)APP_ASP_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 }
 
 void otPlatRadioSetMacFrameCounter(otInstance *aInstance, uint32_t aMacFrameCounter)
@@ -738,12 +740,12 @@ void otPlatRadioSetMacFrameCounter(otInstance *aInstance, uint32_t aMacFrameCoun
 
     sMacFrameCounter = aMacFrameCounter;
 
-    AppToAspMessage_t msg;
+    macToPlmeMessage_t msg;
 
-    msg.msgType                    = aspMsgTypeSetMacFrameCounter_c;
-    msg.msgData.aspMacFrameCounter = aMacFrameCounter;
+    msg.msgType                 = gPlmeSetMacFrameCounter_c;
+    msg.msgData.MacFrameCounter = aMacFrameCounter;
 
-    (void)APP_ASP_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 }
 
 void otPlatRadioSetMacFrameCounterIfLarger(otInstance *aInstance, uint32_t aMacFrameCounter)
@@ -791,14 +793,13 @@ otError otPlatRadioReceiveAt(otInstance *aInstance, uint8_t aChannel, uint32_t a
 
     aStart = rf_adjust_tstamp_from_ot(aStart);
 
-    msg.macInstance                        = 0;
     msg.msgType                            = gPlmeSetTRxStateReq_c;
     msg.msgData.setTRxStateReq.slottedMode = gPhyUnslottedMode_c;
     msg.msgData.setTRxStateReq.state       = gPhySetRxOn_c;
     msg.msgData.setTRxStateReq.rxDuration  = aDuration / IEEE802154_SYMBOL_TIME_US;
     msg.msgData.setTRxStateReq.startTime   = aStart / IEEE802154_SYMBOL_TIME_US;
 
-    (void)MAC_PLME_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 
 exit:
     return status;
@@ -815,29 +816,29 @@ otError otPlatRadioEnableCsl(otInstance         *aInstance,
 
     sCslPeriod = aCslPeriod;
 
-    AppToAspMessage_t msg;
+    macToPlmeMessage_t msg;
 
-    msg.msgType              = aspMsgTypeCslEnable_c;
-    msg.msgData.aspCslPeriod = aCslPeriod;
+    msg.msgType           = gPlmeCslEnable_c;
+    msg.msgData.cslPeriod = aCslPeriod;
 
-    (void)APP_ASP_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 
     return OT_ERROR_NONE;
 }
 
 void otPlatRadioUpdateCslSampleTime(otInstance *aInstance, uint32_t aCslSampleTime)
 {
-    AppToAspMessage_t msg;
+    macToPlmeMessage_t msg;
 
     OT_UNUSED_VARIABLE(aInstance);
 
     sCslSampleTimeUs = aCslSampleTime;
 
     /* The CSL sample time is in microseconds and PHY function expects also microseconds */
-    msg.msgType                  = aspMsgTypeCslSetSampleTime_c;
-    msg.msgData.aspCslSampleTime = rf_adjust_tstamp_from_ot(aCslSampleTime);
+    msg.msgType               = gPlmeCslSetSampleTime_c;
+    msg.msgData.cslSampleTime = rf_adjust_tstamp_from_ot(aCslSampleTime);
 
-    (void)APP_ASP_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 }
 
 #endif /* OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE */
@@ -868,19 +869,18 @@ static uint16_t rf_compute_csl_phase(uint32_t aTimeUs)
 static void rf_abort(void)
 {
     macToPlmeMessage_t msg;
-    msg.macInstance = 0;
 
     sunRxMode                            = RX_ON_IDLE_START;
     msg.msgType                          = gPlmeSetReq_c;
     msg.msgData.setReq.PibAttribute      = gPhyPibRxOnWhenIdle;
     msg.msgData.setReq.PibAttributeValue = (uint64_t)0;
 
-    (void)MAC_PLME_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 
     msg.msgType                      = gPlmeSetTRxStateReq_c;
     msg.msgData.setTRxStateReq.state = gPhyForceTRxOff_c;
 
-    (void)MAC_PLME_SapHandler(&msg, 0);
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 }
 
 static void rf_set_channel(uint8_t channel)
@@ -890,12 +890,11 @@ static void rf_set_channel(uint8_t channel)
     {
         macToPlmeMessage_t msg;
 
-        msg.macInstance                      = 0;
         msg.msgType                          = gPlmeSetReq_c;
         msg.msgData.setReq.PibAttribute      = gPhyPibCurrentChannel_c;
         msg.msgData.setReq.PibAttributeValue = (uint64_t)channel;
 
-        (void)MAC_PLME_SapHandler(&msg, 0);
+        (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 
         sChannel = channel;
     }
@@ -905,12 +904,11 @@ static void rf_set_tx_power(int8_t tx_power)
 {
     macToPlmeMessage_t msg;
 
-    msg.macInstance                      = 0;
     msg.msgType                          = gPlmeSetReq_c;
     msg.msgData.setReq.PibAttribute      = gPhyPibTransmitPower_c;
     msg.msgData.setReq.PibAttributeValue = (uint64_t)tx_power;
 
-    MAC_PLME_SapHandler(&msg, 0);
+    MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 }
 
 /* Used to convert from phy clock timestamp (in symbols) to time (in us) */
@@ -1070,18 +1068,19 @@ phyStatus_t PLME_OT_MAC_SapHandler(void *pMsg, instanceId_t instance)
 
 void otPlatRadioInit(void)
 {
-    AppToAspMessage_t msg;
+    macToPlmeMessage_t msg;
 
     Phy_Init();
+
+    ot_phy_ctx = PHY_get_ctx();
+
     /* Register Phy Data Service Access Point (PD_SAP) and Phy Layer Management Entities Service Access Point (PLME_SAP)
      * handlers */
     Phy_RegisterSapHandlers((PD_MAC_SapHandler_t)PD_OT_MAC_SapHandler, (PLME_MAC_SapHandler_t)PLME_OT_MAC_SapHandler,
-                            0);
+                            ot_phy_ctx);
 
-    ASP_Init(0);
-
-    msg.msgType = aspMsgTypeEnableEncryption_c;
-    (void)APP_ASP_SapHandler(&msg, 0);
+    msg.msgType = gPlmeEnableEncryption_c;
+    (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 
     rf_set_channel(sChannel);
 
@@ -1168,12 +1167,11 @@ static void rf_rx_on_idle(uint32_t newValue)
     if (sunRxMode != newValue)
     {
         sunRxMode                            = newValue;
-        msg.macInstance                      = 0;
         msg.msgType                          = gPlmeSetReq_c;
         msg.msgData.setReq.PibAttribute      = gPhyPibRxOnWhenIdle;
         msg.msgData.setReq.PibAttributeValue = (uint64_t)sunRxMode;
 
-        phy_status = MAC_PLME_SapHandler(&msg, 0);
+        phy_status = MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 
         assert(phy_status == gPhySuccess_c);
     }
