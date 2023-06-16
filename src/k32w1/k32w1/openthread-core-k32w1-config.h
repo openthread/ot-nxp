@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017, The OpenThread Authors.
+ *  Copyright (c) 2017-2023, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -329,6 +329,7 @@
 #endif
 
 /* Thread 1.3 configuration flags */
+#ifndef NO_THREAD_1_3_FLAGS
 /**
  * @def OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
  *
@@ -388,5 +389,5 @@
 #ifndef OPENTHREAD_CONFIG_ECDSA_ENABLE
 #define OPENTHREAD_CONFIG_ECDSA_ENABLE 1
 #endif
-
+#endif // NO_THREAD_1_3_FLAGS
 #endif // OPENTHREAD_CORE_K32W1_CONFIG_H_
