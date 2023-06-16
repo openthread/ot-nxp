@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2022, The OpenThread Authors.
+ *  Copyright (c) 2022-2023, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -131,8 +131,11 @@ void otSysInit(int argc, char *argv[])
 
     if (!alreadyInit)
     {
+#if !defined(FSL_OSA_MAIN_FUNC_ENABLE) || (FSL_OSA_MAIN_FUNC_ENABLE == 0)
+        /* Called from OSA main() */
         /* Init clock config */
         BOARD_InitHardware();
+#endif
 
         /* Init Ot Platform */
         PLATFORM_InitOT();
@@ -197,7 +200,11 @@ void otSysProcessDrivers(otInstance *aInstance)
     otPlatUartProcess();
 
 #if !USE_RTOS
+#if !defined(FSL_OSA_MAIN_FUNC_ENABLE) || (FSL_OSA_MAIN_FUNC_ENABLE == 0)
+    /* Called from OSA main() */
     OSA_ProcessTasks();
+#endif
+
     NvIdle();
 #endif
 
