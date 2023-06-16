@@ -12,7 +12,7 @@
 **         Linker file for the GNU C Compiler
 **
 **     Copyright 2016 Freescale Semiconductor, Inc.
-**     Copyright 2016-2021 NXP
+**     Copyright 2016-2023 NXP
 **     All rights reserved.
 **
 **     SPDX-License-Identifier: BSD-3-Clause
@@ -311,11 +311,21 @@ SECTIONS
   .stack :
   {
     . = ALIGN(8);
+    /* STACK_SIZE is assumed to be multiple of 8 bytes,
+     * thus __StackTop which is pointing to the end of
+     * this section should be 8 byte aligned.
+     */
     . += STACK_SIZE;
+    __StackTop = .;
   } > m_cstack
 
   /* Initializes stack on the end of block */
-  __StackTop   = m_cstack_end;
+
+  /* m_cstack_end is manually calculated and in the end it's not 8 byte aligned
+   * breaking the AAPCS standard: 5.2.1.2 Stack constraints at a public interface
+   * thus breaking va_args for 64 bit values.
+   */
+  /* __StackTop   = m_cstack_end; */
   __StackLimit = m_cstack_start;
   PROVIDE(__stack = __StackTop);
 
