@@ -103,3 +103,20 @@ uint64_t PWR_TryEnterLowPower(uint64_t timeoutUs)
 #endif
     return 0;
 }
+
+int PWRM_eFinishActivity()
+{
+    PWR_AllowDeviceToSleep();
+    return 0;
+}
+
+int PWRM_eStartActivity()
+{
+    PWR_DisallowDeviceToSleep();
+    return 0;
+}
+
+uint16_t PWRM_u16GetActivityCount(void)
+{
+    return ucPWRFlag;
+}
