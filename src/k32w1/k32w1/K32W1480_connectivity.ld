@@ -105,6 +105,12 @@ firmware_ram_upper_limit         = m_data1_end;
 firmware_ram_lower_limit         = m_data1_start;
 m_warmboot_stack_end             = m_ram1_start;
 
+m_sqram_debug_size               = 0x7C;
+
+/* Section used to share a flag on both cores for lowpower purpose */
+m_lowpower_flag_size              = 0x04;
+m_lowpower_flag_start             = 0x489C0000 + m_sqram_debug_size;
+
 m_sqram_btblebuf_size = 0x6300; /* was 0x7700 but was reduced to give space to sh_mem and ext_log - can be readjusted if needed*/
                                 /*Increased from 0x5400 to 0x6300 to hold 12 additionnal TX data buffers to support 24 connections (pairing)*/
 rpmsg_sh_mem_size = 0x1800;
@@ -130,6 +136,7 @@ MEMORY
   m_data1               (RW)  : ORIGIN = m_data1_start, LENGTH = m_data1_size
   rpmsg_sh_mem		      (RW)  : ORIGIN = rpmsg_sh_mem_start, LENGTH = rpmsg_sh_mem_size
   m_nbu_flash           (RW)  : ORIGIN = 0x48800000, LENGTH = 0x00040000
+  m_lowpower_flag       (RW)  : ORIGIN = m_lowpower_flag_start, LENGTH = m_lowpower_flag_size
 }
 
 TARGET(binary)
