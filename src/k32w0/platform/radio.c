@@ -146,6 +146,10 @@ extern void BOARD_GetCoexIoCfg(void **rfDeny, void **rfActive, void **rfStatus);
 /* RX was disabled due to no RX bufs */
 #define OT_RADIO_STATE_RX_DISABLED ((otRadioState)(OT_RADIO_STATE_INVALID - 1))
 
+/* Use the au8Padding[] fields of the tsPhyFrame to keep some meta data about the received frame */
+#define FMI_FP 0 /* ACKed with FP */
+#define FMI_LM 1 /* Enh-ACKed with link metrics info */
+
 /* Structures */
 typedef struct
 {
@@ -774,18 +778,8 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
         eOptions |= E_MMAC_TX_USE_CCA;
     }
 
-    if (eOptions & E_MMAC_TX_USE_CCA)
-    {
-        if ((eOptions & E_MMAC_TX_DELAY_START) == E_MMAC_TX_DELAY_START)
-        {
-            /* No retransmissions, just 1 CCA */
-            vMMAC_SetTxParameters(1, 0, 0, 0);
-        }
-        else
-        {
-            vMMAC_SetTxParameters(1, MAC_TX_CSMA_MIN_BE, MAC_TX_CSMA_MAX_BE, aFrame->mInfo.mTxInfo.mMaxCsmaBackoffs);
-        }
-    }
+    /* No retransmissions, just 1 CCA */
+    vMMAC_SetTxParameters(1, 0, 0, 0);
 
     /* frame conversion. aOtFrame is sTxOtFrame */
     sTxMacFrame.u8PayloadLength = aFrame->mLength - kFcsSize;
@@ -876,7 +870,7 @@ otRadioCaps otPlatRadioGetCaps(otInstance *aInstance)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    return OT_RADIO_CAPS_ACK_TIMEOUT | OT_RADIO_CAPS_CSMA_BACKOFF |
+    return OT_RADIO_CAPS_ACK_TIMEOUT |
            OT_RADIO_CAPS_SLEEP_TO_TX
 #if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
            /* MAC doesn't support enc/dec. It uses K32WEncFrame() callback */
@@ -1110,7 +1104,8 @@ static void K32WISR(uint32_t u32IntBitmap)
 static void K32WProcessMacHeader(tsPhyFrame *aRxFrame)
 {
     /* Make sure this is set to 0 when we are not dealing with a data request */
-    aRxFrame->au8Padding[0] = 0;
+    aRxFrame->au8Padding[FMI_FP] = 0;
+    aRxFrame->au8Padding[FMI_LM] = 0;
 
     /* check if frame pending processing is required */
     if (!aRxFrame)
@@ -1121,7 +1116,7 @@ static void K32WProcessMacHeader(tsPhyFrame *aRxFrame)
     vMMAC_SetTxPend(isFpRequired);
 
     /* use the unused filed to store if the frame was ack'ed with FP and report this back to OT stack */
-    aRxFrame->au8Padding[0] = isFpRequired;
+    aRxFrame->au8Padding[FMI_FP] = isFpRequired;
 }
 
 /**
@@ -1257,10 +1252,20 @@ static void K32WGetRxFrameInfo(rxRingBufferEntry *rbe)
     K32WFrameConversion(&rbe->f, &rbe->of);
 
     rbe->of.mChannel                             = sChannel; /* Rx channel */
-    rbe->of.mInfo.mRxInfo.mAckedWithFramePending = (bool)rbe->f.au8Padding[0];
+    rbe->of.mInfo.mRxInfo.mAckedWithFramePending = (bool)rbe->f.au8Padding[FMI_FP];
+
+#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE || OPENTHREAD_CONFIG_MLE_LINK_METRICS_SUBJECT_ENABLE
+    bool_t security_check = FALSE;
 
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
-    if (sCslPeriod)
+    security_check = !!sCslPeriod || security_check;
+#endif
+
+#if OPENTHREAD_CONFIG_MLE_LINK_METRICS_SUBJECT_ENABLE
+    security_check = !!rbe->f.au8Padding[FMI_LM] || security_check;
+#endif
+
+    if (security_check)
     {
         uint8_t keyId;
 
@@ -1482,6 +1487,11 @@ static uint8_t K32WGetVsIeLen(void *t)
         uint8_t tmp[OT_ACK_IE_MAX_SIZE];
 
         len = otMacFrameGenerateEnhAckProbingIe(tmp, NULL, len);
+    }
+
+    if (len)
+    {
+        ((tsPhyFrame *)t)->au8Padding[FMI_LM] = TRUE;
     }
 
     return len;

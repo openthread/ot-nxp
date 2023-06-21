@@ -83,7 +83,7 @@ struct settingsBlock
  * initial RAM buffer size gets insufficient
  */
 #define kRamBufferReallocSize 512
-#define kRamBufferMaxAllocSize 10240
+#define kRamBufferMaxAllocSize 12288
 
 #define kRamDescSize sizeof(ramBufferDescriptor)
 
@@ -114,6 +114,13 @@ rsError ramStorageAdd(ramBufferDescriptor *pBuffer, uint16_t aKey, const uint8_t
  * - if aIndex is -1 then all the  occurences of aKey are deleted
  */
 rsError ramStorageDelete(ramBufferDescriptor *pBuffer, uint16_t aKey, int aIndex);
+
+/* adds a dummy entry to the end of a corresponding PDM region in RAM buffer,
+ * if the key length does not fit in the current region. This allows the key
+ * to be actually added in the next PDM region, avoiding having a key span
+ * across two PDM regions.
+ */
+rsError ramStorageEnsureBlockConsistency(ramBufferDescriptor *pBuffer, uint16_t aValueLength);
 
 #ifdef __cplusplus
 }
