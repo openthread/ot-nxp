@@ -100,7 +100,6 @@ set(K32W1_SOURCES
     radio.c
     system.c
     uart.c
-    power.c
     ../../common/flash_nvm.c
     ../../../openthread/examples/apps/cli/cli_uart.cpp
 )

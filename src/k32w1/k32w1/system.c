@@ -54,9 +54,11 @@
 #include "utils/uart.h"
 
 #if defined(gAppLowpowerEnabled_d) && (gAppLowpowerEnabled_d > 0)
+#include "PWR_Interface.h"
 #include "fsl_pm_core.h"
 #include "fwk_platform_extflash.h"
 #include "fwk_platform_lowpower.h"
+
 static status_t            ExtFlash_LowpowerCb(pm_event_type_t eventType, uint8_t powerState, void *data);
 static pm_notify_element_t ExtFlashLpNotifyGroup = {
     .notifyCallback = ExtFlash_LowpowerCb,
@@ -66,10 +68,7 @@ static pm_notify_element_t ExtFlashLpNotifyGroup = {
 
 #if !defined(configUSE_TICKLESS_IDLE) || (defined(configUSE_TICKLESS_IDLE) && (configUSE_TICKLESS_IDLE == 0))
 #if defined(gAppLowpowerEnabled_d) && (gAppLowpowerEnabled_d > 0)
-#include "PWR_Interface.h"
 #include <openthread/tasklet.h>
-
-extern uint64_t PWR_TryEnterLowPower(uint64_t timeoutUs);
 
 #if (defined(gAppButtonCnt_c) && (gAppButtonCnt_c > 0))
 #include "fsl_component_button.h"
@@ -219,7 +218,7 @@ void otSysProcessDrivers(otInstance *aInstance)
     {
         if (otTaskletsArePending(aInstance) == false)
         {
-            PWR_TryEnterLowPower(0);
+            PWR_EnterLowPower(0);
         }
     }
 #endif /*defined(gAppLowpowerEnabled_d) && (gAppLowpowerEnabled_d > 0)*/
