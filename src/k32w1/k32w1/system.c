@@ -216,10 +216,27 @@ void otSysProcessDrivers(otInstance *aInstance)
     if (g_bBtnAllowDeviceToSleep)
 #endif /*(defined(gAppButtonCnt_c) && (gAppButtonCnt_c > 0))*/
     {
+        /*
+         * We need to protect PWR_EnterLowPower with interrupt disable/enable because PWR_EnterLowPower
+         * does not used interrupt disable/enable protection at all.
+         * Cover the case when at beginning PWR_EnterLowPower check the lpDisallowCount counter and it
+         * find it 0 which means can enter to low power, however if an interrupt which disallow entering
+         * into low power (like timerCallback for alarm milli handler) happens between lpDisallowCount check
+         * and WFI instruction, then IRQ will be serviced and device will end up into an inconsistent state,
+         * i.e. lpDisallowCount will be set to 1 from serviced IRQ but the device will manage to enter in low power,
+         * leading to fail to process the event in the main loop and possible stays in low power for ever
+         * if it was the single wake-up interrupt.
+         * Also otTaskletsArePending is included into interrupt protection to cover the case when between
+         * otTaskletsArePending check and WFI/PWR_EnterLowPower some Task.Post() is happening.
+         * If not using DisableGlobalIRQ here and Task.Post() from interrupt happens between
+         * otTaskletsArePending check and PWR_EnterLowPower entering, then task processing will be missed.
+         */
+        uint32_t intMask = DisableGlobalIRQ();
         if (otTaskletsArePending(aInstance) == false)
         {
             PWR_EnterLowPower(0);
         }
+        EnableGlobalIRQ(intMask);
     }
 #endif /*defined(gAppLowpowerEnabled_d) && (gAppLowpowerEnabled_d > 0)*/
 #endif /*!defined(configUSE_TICKLESS_IDLE) || (defined(configUSE_TICKLESS_IDLE) && (configUSE_TICKLESS_IDLE==0))*/
