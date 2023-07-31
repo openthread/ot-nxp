@@ -195,12 +195,12 @@ main()
         SDK_RELEASE=ON
     fi
 
-    if [ -f $NXP_K32W0_SDK_ROOT/.gitmodules ]; then
+    if [ -f "$NXP_K32W0_SDK_ROOT"/.gitmodules ]; then
         echo "Build using internal bitbucket"
         SDK_RELEASE=OFF
     fi
 
-    echo "NXP_K32W0_SDK_ROOT set to " $NXP_K32W0_SDK_ROOT
+    echo "NXP_K32W0_SDK_ROOT set to $NXP_K32W0_SDK_ROOT"
 
     if [ $# == 0 ]; then
         create_directory_and_build all $SDK_RELEASE "$@"
