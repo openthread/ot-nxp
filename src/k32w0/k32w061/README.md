@@ -38,22 +38,34 @@ $ pip3 install pycryptodome
 
 ## Tools
 
-- Download and install the [MCUXpresso IDE][mcuxpresso ide].
+Download the K32W0 SDK using the west tool.
 
-[mcuxpresso ide]: https://www.nxp.com/support/developer-resources/software-development-tools/mcuxpresso-software-and-tools/mcuxpresso-integrated-development-environment-ide:MCUXpresso-IDE
+```bash
+$ cd third_party/k32w0_sdk/repo
+$ west init -l manifest --mf west.yml
+$ west update
+```
 
-- Download [K32W061 SDK 2.6.6](https://mcuxpresso.nxp.com/). Creating an
-  nxp.com account is required before being able to download the SDK. Once the
-  account is created, login and follow the steps for downloading
-  SDK_2.6.6_K32W061DK6. The SDK Builder UI selection should be similar with
-  the one from the image below.
-  ![MCUXpresso SDK Download](../../../doc/img/k32w/mcux-sdk-download.JPG)
+In case there are local modification to the already installed git NXP SDK. Use the west forall command instead of the west init to reset the west workspace before running the west update command. Warning: all local changes will be lost after running this command.
+
+```bash
+$ cd third_party/k32w0_sdk/repo
+$ west forall -c "git reset --hard && git clean -xdf" -a
+```
+
+Some files permission need to be changed to executable :
+
+```bash
+$ chmod +x <path-to-ot-nxp>/third_party/k32w061_sdk/repo/core/tools/imagetool/sign_images.sh
+$ chmod +x <path-to-ot-nxp>/third_party/k32w061_sdk/repo/core/middleware/wireless/zigbee/tools/ZPSConfig/Source/ZPSConfig
+$ chmod +x <path-to-ot-nxp>/third_party/k32w061_sdk/repo/core/middleware/wireless/zigbee/tools/PDUMConfig/Source/PDUMConfig
+
+```
 
 ## Building the examples
 
 ```bash
 $ cd <path-to-ot-nxp>
-$ export NXP_K32W0_SDK_ROOT=/path/to/previously/downloaded/SDK
 $ ./script/build_k32w061
 ```
 
