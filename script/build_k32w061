@@ -184,28 +184,23 @@ create_directory_and_build()
 main()
 {
 
-    # check if environmental variable NXP_K32W0_SDK_ROOT is set
-    #     if not, then use "../../../" as a possible path
-    # then  check if NXP_K32W0_SDK_ROOT contains a valid SDK
-    #     if SW-Content-Register.txt is found
-    #         then NXP_K32W0_SDK_ROOT points to a released SDK
-    #     else if .gitignore is found
+    # Check if NXP_K32W0_SDK_ROOT contains a valid SDK
+    #    if NXP_K32W0_SDK_ROOT is not defined
+    #         We are using a github SDK
+    #    if .gitmodules is found
     #         then NXP_K32W0_SDK_ROOT points to a cloned repository
 
     if [ -z "$NXP_K32W0_SDK_ROOT" ]; then
-        NXP_K32W0_SDK_ROOT="../../../"
-    fi
-
-    if [ -f $NXP_K32W0_SDK_ROOT/SW-Content-Register.txt ]; then
+        export NXP_K32W0_SDK_ROOT="${OT_SRCDIR}/third_party/k32w061_sdk/repo/core"
         SDK_RELEASE=ON
-    elif [ -f $NXP_K32W0_SDK_ROOT/.gitmodules ]; then
-        SDK_RELEASE=OFF
-    else
-        echo "Could not found a valid SDK package!"
-        return
     fi
 
-    echo "NXP_K32W0_SDK_ROOT set to " $NXP_K32W0_SDK_ROOT
+    if [ -f "$NXP_K32W0_SDK_ROOT"/.gitmodules ]; then
+        echo "Build using internal bitbucket"
+        SDK_RELEASE=OFF
+    fi
+
+    echo "NXP_K32W0_SDK_ROOT set to $NXP_K32W0_SDK_ROOT"
 
     if [ $# == 0 ]; then
         create_directory_and_build all $SDK_RELEASE "$@"

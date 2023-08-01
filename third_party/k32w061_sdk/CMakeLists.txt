@@ -46,30 +46,31 @@ if (SDK_RELEASE)
         $ENV{NXP_K32W0_SDK_ROOT}/components/uart/usart_adapter.c
         $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/gcc/startup_K32W061.c
         $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/system_K32W061.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_aes.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/aes/fsl_aes.c
         $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_clock.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_ctimer.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_common.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_gint.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_flash.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_flexcomm.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_gpio.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/ctimer/fsl_ctimer.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/common/fsl_common.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/gint/fsl_gint.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/jn_flash/fsl_flash.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/flexcomm/fsl_flexcomm.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/fmeas/fsl_fmeas.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/lpc_gpio/fsl_gpio.c
         $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_power.c
         $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_reset.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_rng.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_sha.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_usart.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/jn_rng/fsl_rng.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/sha/fsl_sha.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/flexcomm/fsl_usart.c
         $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_wtimer.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_spi.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_dma.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_spi_dma.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_pint.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_inputmux.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_adc.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers/fsl_spifi.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/utilities/fsl_assert.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/utilities/debug_console/fsl_debug_console.c
-        $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/utilities/str/fsl_str.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/flexcomm/fsl_spi.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/lpc_dma/fsl_dma.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/flexcomm/fsl_spi_dma.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/pint/fsl_pint.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/inputmux/fsl_inputmux.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/lpc_adc/fsl_adc.c
+        $ENV{NXP_K32W0_SDK_ROOT}/drivers/spifi/fsl_spifi.c
+        $ENV{NXP_K32W0_SDK_ROOT}/utilities/assert/fsl_assert.c
+        $ENV{NXP_K32W0_SDK_ROOT}/utilities/debug_console/fsl_debug_console.c
+        $ENV{NXP_K32W0_SDK_ROOT}/utilities/debug_console/str/fsl_str.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/Common/MicroInt_arm_sdk2.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/Flash/Internal/Flash_Adapter.c
         $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/FunctionLib/FunctionLib.c
@@ -197,8 +198,27 @@ if (SDK_RELEASE)
             $ENV{NXP_K32W0_SDK_ROOT}/components/uart
             $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061
             $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/drivers
-            $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/utilities/str
-            $ENV{NXP_K32W0_SDK_ROOT}/devices/K32W061/utilities/debug_console
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/common
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/lpc_gpio
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/aes
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/jn_iocon
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/lpc_adc
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/aes
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/jn_flash
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/sha
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/flexcomm
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/lpc_dma
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/pint
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/inputmux
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/spifi
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/jn_rtc
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/fmeas
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/jn_rng
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/ctimer
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/wwdt
+            $ENV{NXP_K32W0_SDK_ROOT}/drivers/gint
+            $ENV{NXP_K32W0_SDK_ROOT}/utilities/debug_console/str
+            $ENV{NXP_K32W0_SDK_ROOT}/utilities/debug_console
             $ENV{NXP_K32W0_SDK_ROOT}/middleware/mbedtls/port/ksdk
             $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/ieee-802.15.4/uMac/Include
             $ENV{NXP_K32W0_SDK_ROOT}/middleware/wireless/framework/Common/

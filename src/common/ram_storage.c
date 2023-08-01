@@ -34,9 +34,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <utils/code_utils.h>
+#include <openthread/platform/memory.h>
+#include <openthread/platform/toolchain.h>
 
 #include "FunctionLib.h"
-#include "PDM.h"
 #include "ram_storage.h"
 
 #ifndef RAM_STORAGE_LOG
@@ -53,6 +54,11 @@
 #define RAM_STORAGE_PRINTF(...)
 #endif
 
+OT_TOOL_WEAK rsError ramStorageEnsureBlockConsistency(ramBufferDescriptor *pBuffer, uint16_t aValueLength)
+{
+    return RS_ERROR_NONE;
+}
+
 rsError ramStorageAdd(ramBufferDescriptor *pBuffer, uint16_t aKey, const uint8_t *aValue, uint16_t aValueLength)
 {
     rsError              error          = RS_ERROR_NONE;
@@ -61,24 +67,20 @@ rsError ramStorageAdd(ramBufferDescriptor *pBuffer, uint16_t aKey, const uint8_t
 
     assert(pBuffer);
     assert(pBuffer->buffer);
-    if (pBuffer->header.length + newBlockLength <= pBuffer->header.maxLength)
-    {
-        currentBlock.key    = aKey;
-        currentBlock.length = aValueLength;
+    otEXPECT_ACTION(pBuffer->header.length + newBlockLength <= pBuffer->header.maxLength, error = RS_ERROR_NO_BUFS);
 
-        memcpy(&pBuffer->buffer[pBuffer->header.length], &currentBlock, sizeof(struct settingsBlock));
-        memcpy(&pBuffer->buffer[pBuffer->header.length + sizeof(struct settingsBlock)], aValue, aValueLength);
-        pBuffer->header.length += newBlockLength;
+    error = ramStorageEnsureBlockConsistency(pBuffer, aValueLength);
+    otEXPECT(error == RS_ERROR_NONE);
 
-        error = RS_ERROR_NONE;
-    }
-    else
-    {
-        error = RS_ERROR_NO_BUFS;
-    }
+    currentBlock.key    = aKey;
+    currentBlock.length = aValueLength;
+    memcpy(&pBuffer->buffer[pBuffer->header.length], &currentBlock, sizeof(currentBlock));
+    memcpy(&pBuffer->buffer[pBuffer->header.length + sizeof(currentBlock)], aValue, aValueLength);
+    pBuffer->header.length += newBlockLength;
 
     RAM_STORAGE_PRINTF("key = %d lengthWriten = %d err = %d", aKey, aValueLength, error);
 
+exit:
     return error;
 }
 

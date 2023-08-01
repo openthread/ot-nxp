@@ -56,6 +56,26 @@
 
 #define MAX_QUEUE_SIZE (16)
 
+/* PDM can use either internal flash or external flash for persistent storage.
+ * Set PDM_SAVE_IDLE_PAGE_SIZE to internal flash page size (512) as default.
+ *
+ * If an application uses PDM in external flash, it's mandatory to define
+ * PDM_SAVE_IDLE_PAGE_SIZE to the external flash page size.
+ */
+#ifndef PDM_EXT_FLASH
+#include "fsl_flash.h"
+#define PDM_SAVE_IDLE_PAGE_SIZE FLASH_PAGE_SIZE
+#else
+#include "Eeprom.h"
+#define PDM_SAVE_IDLE_PAGE_SIZE gEepromParams_SectorSize_c
+#endif // PDM_EXT_FLASH
+
+/* Segment data size is: PDM page size - size of internal header (D_PDM_NVM_SEGMENT_HEADER_SIZE).
+ * Subtract 64 to have more margin. */
+#define PDM_SEGMENT_SIZE (PDM_SAVE_IDLE_PAGE_SIZE - 64)
+/* Dummy keys are introduced at the end of a PDM region if the current key does not fit the free space. */
+#define kRamBufferDummyKey (uint16_t)0xFFFF
+
 typedef struct
 {
     ramBufferDescriptor *pvDataBuffer;
@@ -66,6 +86,9 @@ static tsQueueEntry asQueue[MAX_QUEUE_SIZE];
 static uint8_t      u8QueueWritePtr;
 static uint8_t      u8QueueReadPtr;
 static osaMutexId_t asQueueMutex;
+static bool_t       asQueueMutexTaken;
+/* Buffer used to temporary copy RAM buffer data in order to sync save it. */
+static uint8_t sSegmentBuffer[PDM_SEGMENT_SIZE];
 
 static uint8_t u8IncrementQueuePtr(uint8_t u8CurrentValue);
 
@@ -160,6 +183,42 @@ exit:
 
 #endif /* PDM_ENCRYPTION */
 
+/* Iterate through all PDM ids, starting from the base PDM id
+ * passed as input and load data sequentially in the RAM buffer
+ * found in handle. Prior doesDataExist call is expected in order
+ * to have a correct maxLength value.
+ */
+static void loadData(uint16_t id, uint16_t nbIds, ramBufferDescriptor *handle)
+{
+    PDM_teStatus status = PDM_E_STATUS_OK;
+    uint16_t     length;
+
+    handle->header.length = 0;
+
+    for (uint16_t i = id; i < id + nbIds; i++)
+    {
+        status = PDM_eReadDataFromRecord(i, handle->buffer + handle->header.length,
+                                         handle->header.maxLength - handle->header.length, &length);
+        if (PDM_E_STATUS_OK == status)
+        {
+            handle->header.length += length;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    if ((PDM_E_STATUS_OK != status) || (handle->header.length > handle->header.maxLength))
+    {
+        handle->header.length = 0;
+        for (uint16_t i = id; i < id + nbIds; i++)
+        {
+            PDM_vDeleteDataRecord(i);
+        }
+    }
+}
+
 #if ENABLE_STORAGE_DYNAMIC_MEMORY
 
 static void HandleError(ramBufferDescriptor **buffer)
@@ -171,11 +230,46 @@ static void HandleError(ramBufferDescriptor **buffer)
     }
 }
 
-ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize)
+/* Iterate through all PDM ids (if any), starting from the base
+ * PDM id passed as input and compute the maximum length a RAM
+ * buffer must have to be able to store all data from these ids.
+ * If extendedSearch is FALSE, the search stops after first id.
+ *
+ * Returns the number of sequential PDM ids.
+ */
+static uint16_t doesDataExist(uint16_t id, ramBufferDescriptor *handle, bool_t extendedSearch)
 {
-    rsError              err              = RS_ERROR_NONE;
-    ramBufferDescriptor *ramDescr         = NULL;
-    bool_t               bLoadDataFromNvm = FALSE;
+    uint16_t counter = 0;
+    uint16_t length;
+
+    while (PDM_bDoesDataExist(id + counter, &length))
+    {
+        handle->header.length += length;
+        counter++;
+
+        if (extendedSearch == FALSE)
+        {
+            break;
+        }
+    }
+
+    while (handle->header.length > handle->header.maxLength)
+    {
+        // increase size until NVM data fits
+        handle->header.maxLength += kRamBufferReallocSize;
+    }
+
+    return counter;
+}
+
+/* Set extendedSearch to TRUE to enable retrieving data from additional PDM ids, until
+ * the incremented PDM id does not exist.
+ */
+ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize, bool_t extendedSearch)
+{
+    rsError              err      = RS_ERROR_NONE;
+    ramBufferDescriptor *ramDescr = NULL;
+    uint16_t             nbPdmIds = 0;
 
     ramDescr = (ramBufferDescriptor *)otPlatCAlloc(1, kRamDescSize);
     otEXPECT_ACTION(ramDescr != NULL, HandleError(&ramDescr));
@@ -186,16 +280,7 @@ ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize)
     otEXPECT_ACTION(ramDescr->header.mutexHandle != NULL, HandleError(&ramDescr));
 #endif
 
-    /* Check if dataset is present and get its size */
-    if (PDM_bDoesDataExist(nvmId, &ramDescr->header.length))
-    {
-        bLoadDataFromNvm = TRUE;
-        while (ramDescr->header.length > ramDescr->header.maxLength)
-        {
-            // increase size until NVM data fits
-            ramDescr->header.maxLength += kRamBufferReallocSize;
-        }
-    }
+    nbPdmIds = doesDataExist(nvmId, ramDescr, extendedSearch);
     otEXPECT_ACTION(ramDescr->header.maxLength <= kRamBufferMaxAllocSize, HandleError(&ramDescr));
 
 #if PDM_ENCRYPTION
@@ -216,15 +301,9 @@ ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize)
     ramDescr->buffer = (uint8_t *)otPlatCAlloc(1, ramDescr->header.maxLength);
     otEXPECT_ACTION(ramDescr->buffer != NULL, HandleError(&ramDescr));
 
-    if (bLoadDataFromNvm)
+    if (nbPdmIds > 0)
     {
-        PDM_teStatus status =
-            PDM_eReadDataFromRecord(nvmId, ramDescr->buffer, ramDescr->header.maxLength, &ramDescr->header.length);
-        if ((PDM_E_STATUS_OK != status) || (ramDescr->header.length > ramDescr->header.maxLength))
-        {
-            ramDescr->header.length = 0;
-            PDM_vDeleteDataRecord(nvmId);
-        }
+        loadData(nvmId, nbPdmIds, ramDescr);
     }
 
 exit:
@@ -271,9 +350,10 @@ exit:
 }
 
 #else
-ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize)
+ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize, bool_t extendedSearch)
 {
     OT_UNUSED_VARIABLE(initialSize);
+    OT_UNUSED_VARIABLE(extendedSearch);
     rsError              err       = RS_ERROR_NONE;
     ramBufferDescriptor *ramDescr  = (ramBufferDescriptor *)&sPdmBuffer;
     uint16_t             bytesRead = 0;
@@ -295,13 +375,7 @@ ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize)
 
     if (PDM_bDoesDataExist(nvmId, &ramDescr->header.length))
     {
-        PDM_teStatus status =
-            PDM_eReadDataFromRecord(nvmId, ramDescr->buffer, ramDescr->header.maxLength, &ramDescr->header.length);
-        if ((PDM_E_STATUS_OK != status) || (ramDescr->header.length > ramDescr->header.maxLength))
-        {
-            ramDescr->header.length = 0;
-            PDM_vDeleteDataRecord(nvmId);
-        }
+        loadData(nvmId, 1, ramDescr);
     }
 
 exit:
@@ -310,6 +384,29 @@ exit:
 #endif
 
 #if PDM_SAVE_IDLE
+
+/* Overwrite the weak implementation from ram_storage.c */
+rsError ramStorageEnsureBlockConsistency(ramBufferDescriptor *pBuffer, uint16_t aValueLength)
+{
+    rsError        error     = RS_ERROR_NONE;
+    const uint16_t newLength = pBuffer->header.length + sizeof(struct settingsBlock) + aValueLength;
+    if (newLength / PDM_SEGMENT_SIZE != pBuffer->header.length / PDM_SEGMENT_SIZE)
+    {
+        // This means the current block will span across two PDM id regions, which can
+        // lead to corrupted data in some corner cases. Add a dummy value and shift the
+        // current block such that it falls in the next PDM id region.
+        const uint16_t dummyLength =
+            PDM_SEGMENT_SIZE - ((pBuffer->header.length % PDM_SEGMENT_SIZE) + sizeof(struct settingsBlock));
+        struct settingsBlock dummyBlock = {.key = kRamBufferDummyKey, .length = dummyLength};
+
+        memcpy(&pBuffer->buffer[pBuffer->header.length], &dummyBlock, sizeof(dummyBlock));
+        memset(&pBuffer->buffer[pBuffer->header.length + sizeof(dummyBlock)], 0, dummyBlock.length);
+        pBuffer->header.length += sizeof(dummyBlock) + dummyBlock.length;
+    }
+
+exit:
+    return error;
+}
 
 uint8_t u8IncrementQueuePtr(uint8_t u8CurrentValue)
 {
@@ -348,7 +445,11 @@ PDM_teStatus FS_eSaveRecordDataInIdleTask(uint16_t u16IdValue, ramBufferDescript
     }
 #endif
 
-    mutex_lock(asQueueMutex, osaWaitForever_c);
+    if (!OSA_InIsrContext())
+    {
+        mutex_lock(asQueueMutex, osaWaitForever_c);
+        asQueueMutexTaken = TRUE;
+    }
 
     /* Instead of updating PDM immediately we queue request until later. If
      * queue is full, performs first write in queue synchronously, to avoid
@@ -381,20 +482,58 @@ PDM_teStatus FS_eSaveRecordDataInIdleTask(uint16_t u16IdValue, ramBufferDescript
         u8QueueWritePtr = u8IncrementQueuePtr(u8QueueWritePtr);
     }
 
-    mutex_unlock(asQueueMutex);
+    if (!OSA_InIsrContext())
+    {
+        asQueueMutexTaken = FALSE;
+        mutex_unlock(asQueueMutex);
+    }
 
     return status;
 }
 
+/* Saving data synchronously uses a static buffer to copy
+ * PDM_SEGMENT_SIZE bytes from a RAM buffer. Chunks of PDM_SEGMENT_SIZE
+ * bytes are saved at different PDM ids, starting from the base PDM
+ * id used in the RAM buffer entry. The PDM id user (e.g. Matter) should
+ * take into account this limitation and choose the PDM ids accordingly, to
+ * avoid the possibility of overwriting data.
+ */
+static void FS_SaveRecordData(tsQueueEntry *entry)
+{
+    ramBufferDescriptor *handle   = entry->pvDataBuffer;
+    uint16_t             length   = handle->header.length;
+    uint8_t              segments = (length / PDM_SEGMENT_SIZE) + 1;
+
+    for (uint8_t i = 0; i < segments; i++)
+    {
+        PDM_teStatus status = PDM_E_STATUS_INTERNAL_ERROR;
+        uint16_t     size   = (length < PDM_SEGMENT_SIZE) ? length : PDM_SEGMENT_SIZE;
+
+        // There might be a corner case in which correlated keys are in different
+        // PDM regions, which might cause deprecated fabric data if an issue occurs
+        // (reset) before both PDM regions are saved, with the assumption that fabric
+        // data spans across a maximum of two PDM regions.
+        if (osaStatus_Success == mutex_lock(handle->header.mutexHandle, 0))
+        {
+            memcpy(sSegmentBuffer, handle->buffer + i * PDM_SEGMENT_SIZE, size);
+            mutex_unlock(handle->header.mutexHandle);
+
+            status = PDM_eSaveRecordData(entry->u16IdValue + i, sSegmentBuffer, size);
+        }
+
+        if (status != PDM_E_STATUS_OK)
+        {
+            FS_eSaveRecordDataInIdleTask(entry->u16IdValue, handle);
+            break;
+        }
+
+        length -= size;
+    }
+}
+
 void FS_vIdleTask(uint8_t u8WritesAllowed)
 {
-    tsQueueEntry         currentEntry;
-    ramBufferDescriptor *ramBuffer       = NULL;
-    uint8_t             *buffer          = NULL;
-    uint16_t             bufferSize      = 0;
-    uint16_t             bufferAllocSize = 0;
-    bool_t               doPdmSave       = FALSE;
-    PDM_teStatus         pdmStatus       = PDM_E_STATUS_INTERNAL_ERROR;
+    tsQueueEntry currentEntry;
 
     if (u8WritesAllowed > MAX_QUEUE_SIZE)
         u8WritesAllowed = MAX_QUEUE_SIZE;
@@ -402,48 +541,21 @@ void FS_vIdleTask(uint8_t u8WritesAllowed)
     while ((u8QueueReadPtr != u8QueueWritePtr) && (u8WritesAllowed > 0))
     {
         mutex_lock(asQueueMutex, osaWaitForever_c);
+        asQueueMutexTaken = TRUE;
         memcpy(&currentEntry, &asQueue[u8QueueReadPtr], sizeof(tsQueueEntry));
-        u8QueueReadPtr = u8IncrementQueuePtr(u8QueueReadPtr);
+        u8QueueReadPtr    = u8IncrementQueuePtr(u8QueueReadPtr);
+        asQueueMutexTaken = FALSE;
         mutex_unlock(asQueueMutex);
 
-        ramBuffer = currentEntry.pvDataBuffer;
-        if (osaStatus_Success == mutex_lock(ramBuffer->header.mutexHandle, 0))
-        {
-            if ((buffer == NULL) || (bufferAllocSize < ramBuffer->header.length))
-            {
-                bufferAllocSize = ramBuffer->header.length;
-                buffer          = (uint8_t *)otPlatRealloc(buffer, bufferAllocSize);
-            }
-
-            if (buffer != NULL)
-            {
-                memcpy(buffer, ramBuffer->buffer, ramBuffer->header.length);
-                bufferSize = ramBuffer->header.length;
-                doPdmSave  = TRUE;
-            }
-
-            mutex_unlock(ramBuffer->header.mutexHandle);
-        }
-
-        if (doPdmSave == TRUE)
-        {
-            pdmStatus = PDM_eSaveRecordData(currentEntry.u16IdValue, buffer, bufferSize);
-            doPdmSave = FALSE;
-        }
-
-        if (pdmStatus != PDM_E_STATUS_OK)
-        {
-            FS_eSaveRecordDataInIdleTask(currentEntry.u16IdValue, ramBuffer);
-        }
+        FS_SaveRecordData(&currentEntry);
 
         u8WritesAllowed--;
-        pdmStatus = PDM_E_STATUS_INTERNAL_ERROR;
     }
+}
 
-    if (buffer != NULL)
-    {
-        otPlatFree(buffer);
-    }
+bool_t idleMutexIsTaken()
+{
+    return asQueueMutexTaken;
 }
 
 #endif /* PDM_SAVE_IDLE */

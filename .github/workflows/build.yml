@@ -79,6 +79,7 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: true
+
     - name: Bootstrap
       run: |
         cd /tmp
@@ -88,10 +89,26 @@ jobs:
         tar xjf gcc-arm.tar.bz2
         sudo pip3 install pycrypto
         sudo pip3 install pycryptodome
-        wget https://cache.nxp.com/lgfiles/bsps/SDK_2_6_9_K32W061DK6.zip
-        unzip SDK_2_6_9_K32W061DK6.zip -d SDK_2_6_9_K32W061DK6
-        rm -rf SDK_2_6_9_K32W061DK6.zip
-        mv -f SDK_2_6_9_K32W061DK6 sdk_k32w061
+        sudo pip3 install west
+        # use the minimal required cmake version
+        sudo apt-get remove cmake
+        sudo apt-get purge --auto-remove cmake
+        wget http://www.cmake.org/files/v3.10/cmake-3.10.3.tar.gz
+        tar xf cmake-3.10.3.tar.gz
+        cd cmake-3.10.3
+        ./configure
+        sudo make install
+        cmake --version | grep 3.10.3
+
+    - name: Update K32W0 SDK
+      run: |
+        cd third_party/k32w061_sdk/repo
+        west init -l manifest --mf west.yml
+        west update
+        chmod +x core/tools/imagetool/sign_images.sh
+
+    - name: Update JN5189 SDK
+      run: |
         cd /tmp
         mkdir -p sdk_jn5189
         cd sdk_jn5189
@@ -101,6 +118,9 @@ jobs:
         cd sdks
         unzip 02acef84909cb653e56c7d331710a9d8.zip
         rm -rf 02acef84909cb653e56c7d331710a9d8.zip
+
+    - name: Update RT1060 SDK
+      run: |
         cd /tmp
         mkdir -p sdk_rt1060
         cd sdk_rt1060
@@ -113,23 +133,11 @@ jobs:
         cd /tmp
         git clone https://github.com/NXPmicro/mcux-sdk.git
         cp -r mcux-sdk/devices/MIMXRT1062/gcc sdk_rt1060/sdks/devices/MIMXRT1062/
-        # use the minimal required cmake version
-        cd /tmp
-        sudo apt-get remove cmake
-        sudo apt-get purge --auto-remove cmake
-        wget http://www.cmake.org/files/v3.10/cmake-3.10.3.tar.gz
-        tar xf cmake-3.10.3.tar.gz
-        cd cmake-3.10.3
-        ./configure
-        sudo make install
-        cmake --version | grep 3.10.3
-         
+
     - name: Build
       run: |
         export PATH=/tmp/${{ matrix.gcc_extract_dir }}/bin:$PATH
-        export NXP_K32W0_SDK_ROOT=/tmp/sdk_k32w061/
         export NXP_JN5189_SDK_ROOT=/tmp/sdk_jn5189/sdks/
         export NXP_RT1060_SDK_ROOT=/tmp/sdk_rt1060/sdks/
-        chmod +x $NXP_K32W0_SDK_ROOT/tools/imagetool/sign_images.sh
         chmod +x $NXP_JN5189_SDK_ROOT/tools/imagetool/sign_images.sh
         script/test

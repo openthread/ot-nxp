@@ -30,6 +30,8 @@
 #endif
 
 #include <stddef.h>
+#include <stdint.h>
+
 #if defined(MBEDTLS_HAVE_TIME_DATE)
 #include <time.h>
 #include "mbedtls/platform_time.h"
