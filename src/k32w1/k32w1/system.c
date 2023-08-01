@@ -175,6 +175,7 @@ void otSysInit(int argc, char *argv[])
 #if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
         K32WLogInit();
 #endif
+        K32WRandomInit();
     }
 
     otPlatRadioInit();
