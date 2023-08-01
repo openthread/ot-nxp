@@ -95,3 +95,9 @@ void otPlatRadioProcess(otInstance *aInstance);
 void K32WLogInit();
 #endif /* OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED */
 #endif // PLATFORM_K32W1_H_
+
+/**
+ * This function initializes the random number service used by OpenThread.
+ *
+ */
+void K32WRandomInit(void);
