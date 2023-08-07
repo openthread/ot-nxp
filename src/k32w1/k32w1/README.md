@@ -26,7 +26,7 @@ $ ./script/bootstrap
 - Download [the latest SDK from the link.](https://mcuxpresso.nxp.com/).
   Creating an nxp.com account is required before being able to download the
   SDK. Once the account is created, login and follow the steps for downloading
-  SDK_2.12.0_K32W148-EVK. The SDK Builder UI selection should be similar with
+  SDK_2.12.5_K32W148-EVK. The SDK Builder UI selection should be similar with
   the one from the image below.
   ![MCUXpresso SDK Download](../../../doc/img/k32w1/mcux-sdk-download.jpg)
 
