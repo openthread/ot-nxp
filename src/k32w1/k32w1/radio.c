@@ -35,7 +35,7 @@
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
-#include OPENTHREAD_PROJECT_CORE_CONFIG_FILE
+#include OPENTHREAD_PLATFORM_CORE_CONFIG_FILE
 
 #include "AspInterface.h"
 #include "EmbeddedTypes.h"
