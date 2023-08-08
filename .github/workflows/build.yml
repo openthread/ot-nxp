@@ -108,6 +108,7 @@ jobs:
         chmod +x core/tools/imagetool/sign_images.sh
 
     - name: Update K32W1 SDK
+      if: ${{ matrix.gcc_ver >= 6 }}
       run: |
         cd /tmp
         mkdir -p sdk_k32w1
