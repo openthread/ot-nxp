@@ -75,6 +75,7 @@ set(K32W1_SDK_SOURCES
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/HWParameter/HWParameter.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform_lowpower.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform_lowpower_timer.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform_ics.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform_ot.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform_extflash.c
@@ -290,6 +291,7 @@ set(K32W1_SDK_INCLUDES
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/ieee-802.15.4/ieee_802_15_4/phy/interface
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/multicore/rpmsg_lite/lib/include
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/multicore/rpmsg_lite/lib/include/platform/k32w1
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/multicore/rpmsg_lite/lib/include/environment/bm
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/multicore/mcmgr/src
     $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/snt
     $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/spc
