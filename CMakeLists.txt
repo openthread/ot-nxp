@@ -40,6 +40,13 @@ message(STATUS "Package Version: ${OT_PACKAGE_VERSION}")
 
 set(CHIP "" CACHE STRING "Chip famille name")
 
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+include(utils)
+
 if (OT_BUILD_RT)
     if (OT_BUILD_RT1060)
         set(PLAT_LIB "openthread-rt1060")
@@ -65,6 +72,13 @@ elseif (OT_BUILD_K32W0)
         set(PLATFORM jn5189)
         set(CHIP k32w0)
     endif()
+elseif (OT_BUILD_K32W1)
+        set(PLAT_LIB "openthread-k32w1")
+        set(CONFIG_FILE "\"openthread-core-k32w1-config.h\"")
+        set(CORE_CONFIG_FILE "\"openthread-core-k32w1-config.h\"")
+        set(CORE_CONFIG_CHECK "\"openthread-core-k32w1-config-check.h\"")
+        set(PLATFORM k32w1)
+        set(CHIP k32w1)
 endif()
 
 set(OT_PLATFORM_LIB ${PLAT_LIB})
@@ -112,3 +126,11 @@ endif()
 
 add_subdirectory(third_party)
 add_subdirectory(src)
+
+if(OT_NXP_POST_BUILD_COMMAND)
+    run_post_build_command()
+endif()
+
+if(OT_NXP_EXPORT_TO_SREC)
+    export_all_targets_to_srec()
+endif()

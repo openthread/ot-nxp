@@ -38,6 +38,9 @@ readonly OT_BUILDDIR_JN5189
 OT_BUILDDIR_RT1060="$(pwd)/build_rt1060"
 readonly OT_BUILDDIR_RT1060
 
+OT_BUILDDIR_K32W1="$(pwd)/build_k32w1"
+readonly OT_BUILDDIR_K32W1
+
 main()
 {
     export CPPFLAGS="${CPPFLAGS:-} -DNDEBUG"
@@ -50,6 +53,9 @@ main()
 
     rm -rf "$OT_BUILDDIR_RT1060"
     "$(dirname "$0")"/build_rt1060
+
+    rm -rf "$OT_BUILDDIR_K32W1"
+    "$(dirname "$0")"/build_k32w1
 }
 
 main "$@"

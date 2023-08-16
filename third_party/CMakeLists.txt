@@ -37,3 +37,7 @@ endif()
 if(OT_BUILD_JN5189)
     add_subdirectory(jn5189_sdk)
 endif()
+
+if(OT_BUILD_K32W1)
+    add_subdirectory(k32w1_sdk)
+endif()

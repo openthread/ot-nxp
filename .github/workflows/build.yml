@@ -107,6 +107,16 @@ jobs:
         west update
         chmod +x core/tools/imagetool/sign_images.sh
 
+    - name: Update K32W1 SDK
+      if: ${{ matrix.gcc_ver >= 6 }}
+      run: |
+        cd /tmp
+        mkdir -p sdk_k32w1
+        cd sdk_k32w1
+        wget https://cache.nxp.com/lgfiles/bsps/SDK_2_12_5_K32W148-EVK.zip
+        unzip SDK_2_12_5_K32W148-EVK.zip
+        rm -rf SDK_2_12_5_K32W148-EVK.zip
+
     - name: Update JN5189 SDK
       run: |
         cd /tmp
@@ -139,5 +149,6 @@ jobs:
         export PATH=/tmp/${{ matrix.gcc_extract_dir }}/bin:$PATH
         export NXP_JN5189_SDK_ROOT=/tmp/sdk_jn5189/sdks/
         export NXP_RT1060_SDK_ROOT=/tmp/sdk_rt1060/sdks/
+        export NXP_K32W1_SDK_ROOT=/tmp/sdk_k32w1/
         chmod +x $NXP_JN5189_SDK_ROOT/tools/imagetool/sign_images.sh
         script/test
