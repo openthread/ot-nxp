@@ -69,6 +69,12 @@ rsError ramStorageAdd(ramBufferDescriptor *pBuffer, uint16_t aKey, const uint8_t
     assert(pBuffer->buffer);
     otEXPECT_ACTION(pBuffer->header.length + newBlockLength <= pBuffer->header.maxLength, error = RS_ERROR_NO_BUFS);
 
+    if (pBuffer->header.extendedSearch == FALSE)
+    {
+        otEXPECT_ACTION(pBuffer->header.length + newBlockLength < pBuffer->header.backendRegionSize,
+                        error = RS_ERROR_NO_BUFS);
+    }
+
     error = ramStorageEnsureBlockConsistency(pBuffer, aValueLength);
     otEXPECT(error == RS_ERROR_NONE);
 

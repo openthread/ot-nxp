@@ -127,6 +127,18 @@
 #define OPENTHREAD_CONFIG_COMMISSIONER_ENABLE 1
 #endif
 
+/* Increase default timeout (30s) because k32w0 commissioner doesn't have crypto acceleration */
+/**
+ * @def OPENTHREAD_CONFIG_COMMISSIONER_JOINER_SESSION_TIMEOUT
+ *
+ * The timeout for the Joiner's session, in seconds. After this timeout,
+ * the Commissioner tears down the session.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_COMMISSIONER_JOINER_SESSION_TIMEOUT
+#define OPENTHREAD_CONFIG_COMMISSIONER_JOINER_SESSION_TIMEOUT 180
+#endif
+
 /**
  * @def OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE
  *
