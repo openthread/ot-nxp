@@ -61,6 +61,29 @@
 
 #include "PWR_Interface.h"
 
+#if USE_NBU
+void PLATFORM_RemoteActiveReq();
+void PLATFORM_RemoteActiveRel();
+#else /* USE_NBU */
+#define PLATFORM_RemoteActiveReq()
+#define PLATFORM_RemoteActiveRel()
+#endif /* USE_NBU */
+
+#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+
+#define CMP_OVHD (4 * IEEE802154_SYMBOL_TIME_US) /* 2 LPTRM (32 kHz) ticks */
+
+static bool_t csl_rx = FALSE;
+
+static void set_csl_sample_time();
+static void start_csl_receiver();
+static void stop_csl_receiver();
+
+#else /* OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE */
+#define start_csl_receiver()
+#define stop_csl_receiver()
+#endif /* OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE */
+
 #define TX_ENCRYPT_DELAY_SYM 200
 
 // clang-format off
@@ -138,7 +161,7 @@ static void     rf_abort(void);
 static void     rf_set_channel(uint8_t channel);
 static void     rf_set_tx_power(int8_t tx_power);
 static uint64_t rf_adjust_tstamp_from_phy(uint64_t ts);
-static uint32_t rf_adjust_tstamp_from_ot(uint64_t time);
+static uint32_t rf_adjust_tstamp_from_ot(uint32_t time);
 
 static void                rf_rx_on_idle(uint32_t newValue);
 static void                ResetRxRingBuffer(rxRingBuffer *aRxRing);
@@ -244,6 +267,8 @@ otError otPlatRadioDisable(otInstance *aInstance)
 {
     otEXPECT(otPlatRadioIsEnabled(aInstance));
 
+    stop_csl_receiver();
+
 #if !USE_NBU
     PHY_Disable();
 #endif
@@ -270,6 +295,8 @@ otError otPlatRadioSleep(otInstance *aInstance)
                     status = OT_ERROR_INVALID_STATE);
 
     rf_abort();
+
+    stop_csl_receiver();
 
     App_AllowDeviceToSleep();
 
@@ -302,6 +329,8 @@ otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel)
 
     if (sunRxMode)
     {
+        start_csl_receiver();
+
         // restart Rx on idle only if it was enabled
         msg.msgType                          = gPlmeSetReq_c;
         msg.msgData.setReq.PibAttribute      = gPhyPibRxOnWhenIdle;
@@ -512,6 +541,8 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
                 if (aFrame->mInfo.mTxInfo.mCslPresent)
                 {
                     uint32_t hdrTimeUs;
+
+                    start_csl_receiver();
 
                     /* Add TX_ENCRYPT_DELAY_SYM symbols delay to allow encryption to finish */
                     msg->msgData.dataReq.startTime = PhyTime_ReadClock() + TX_ENCRYPT_DELAY_SYM;
@@ -828,19 +859,65 @@ otError otPlatRadioEnableCsl(otInstance         *aInstance,
 
 void otPlatRadioUpdateCslSampleTime(otInstance *aInstance, uint32_t aCslSampleTime)
 {
-    macToPlmeMessage_t msg;
-
     OT_UNUSED_VARIABLE(aInstance);
 
     sCslSampleTimeUs = aCslSampleTime;
+}
+
+static void set_csl_sample_time()
+{
+    if (!sCslPeriod)
+    {
+        return;
+    }
+
+    macToPlmeMessage_t msg;
+    uint32_t           csl_period = sCslPeriod * 10 * IEEE802154_SYMBOL_TIME_US;
+    uint32_t           dt         = sCslSampleTimeUs - (uint32_t)TM_GetTimestamp();
+
+    /* next channel sample should be in the future */
+    while ((dt <= CMP_OVHD) || (dt > (CMP_OVHD + 2 * csl_period)))
+    {
+        sCslSampleTimeUs += csl_period;
+        dt = sCslSampleTimeUs - (uint32_t)TM_GetTimestamp();
+    }
 
     /* The CSL sample time is in microseconds and PHY function expects also microseconds */
     msg.msgType               = gPlmeCslSetSampleTime_c;
-    msg.msgData.cslSampleTime = rf_adjust_tstamp_from_ot(aCslSampleTime);
+    msg.msgData.cslSampleTime = rf_adjust_tstamp_from_ot(sCslSampleTimeUs);
 
     (void)MAC_PLME_SapHandler(&msg, ot_phy_ctx);
 }
 
+static void start_csl_receiver()
+{
+    if (!sCslPeriod)
+    {
+        return;
+    }
+
+    /* NBU has to be awake during CSL receiver trx  so that conversion from
+       PHY timebase (NBU) to TMR timebase (host) is valid */
+    if (!csl_rx)
+    {
+        PLATFORM_RemoteActiveReq();
+
+        csl_rx = TRUE;
+    }
+
+    /* sample time is converted to PHY time */
+    set_csl_sample_time();
+}
+
+static void stop_csl_receiver()
+{
+    if (csl_rx)
+    {
+        PLATFORM_RemoteActiveRel();
+
+        csl_rx = FALSE;
+    }
+}
 #endif /* OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE */
 
 /*
@@ -923,11 +1000,11 @@ static uint64_t rf_adjust_tstamp_from_phy(uint64_t ts)
     return TM_GetTimestamp() - delta;
 }
 
-static uint32_t rf_adjust_tstamp_from_ot(uint64_t time)
+static uint32_t rf_adjust_tstamp_from_ot(uint32_t time)
 {
     /* The phy timestamp is in symbols so we need to convert it to microseconds */
     uint64_t ts    = PhyTime_ReadClock() * IEEE802154_SYMBOL_TIME_US;
-    uint64_t delta = time - TM_GetTimestamp();
+    uint32_t delta = time - (uint32_t)TM_GetTimestamp();
 
     return (uint32_t)(ts + delta);
 }
@@ -1004,6 +1081,8 @@ phyStatus_t PD_OT_MAC_SapHandler(void *pMsg, instanceId_t instance)
 
     otSysEventSignalPending();
 
+    stop_csl_receiver();
+
     return gPhySuccess_c;
 }
 
@@ -1062,6 +1141,8 @@ phyStatus_t PLME_OT_MAC_SapHandler(void *pMsg, instanceId_t instance)
     MSG_Free(pMsg);
 
     otSysEventSignalPending();
+
+    stop_csl_receiver();
 
     return gPhySuccess_c;
 }
