@@ -61,6 +61,8 @@
 
 #include "PWR_Interface.h"
 
+#include "fwk_platform_ot.h"
+
 #if USE_NBU
 void PLATFORM_RemoteActiveReq();
 void PLATFORM_RemoteActiveRel();
@@ -199,14 +201,7 @@ void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64)
 {
     OT_UNUSED_VARIABLE(aInstance);
 
-    uint32_t addrLo;
-    uint32_t addrHi;
-
-    addrLo = RADIO_CTRL->UID_LSB;
-    addrHi = RADIO_CTRL->UID_MSB;
-
-    memcpy(aIeeeEui64, &addrLo, sizeof(addrLo));
-    memcpy(aIeeeEui64 + sizeof(addrLo), &addrHi, sizeof(addrHi));
+    PLATFORM_GetIeee802_15_4Addr(aIeeeEui64);
 }
 
 void otPlatRadioSetPanId(otInstance *aInstance, uint16_t aPanId)
