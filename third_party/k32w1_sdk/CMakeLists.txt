@@ -49,8 +49,8 @@ list(APPEND OT_PLATFORM_DEFINES
     "gPlatformShutdownEccRamInLowPower=0"
     "gMemManagerLightExtendHeapAreaUsage=1"
     "gAppHighSystemClockFrequency_d=1"
-    "SSS_CONFIG_FILE=\"fsl_sss_config_snt.h\""
-    "SSCP_CONFIG_FILE=\"fsl_sscp_config_snt.h\""
+    "SSS_CONFIG_FILE=\"fsl_sss_config_elemu.h\""
+    "SSCP_CONFIG_FILE=\"fsl_sscp_config_elemu.h\""
     "DBG_IO_ENABLE"
 )
 
@@ -188,7 +188,7 @@ if (SDK_RELEASE)
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_lpspi.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_ltc.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_lptmr.c
-        $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_snt.c
+        $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_elemu.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_spc.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_cmc.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_ccm32k.c
@@ -213,7 +213,7 @@ else()
         $ENV{NXP_K32W1_SDK_ROOT}/platform/utilities/assert/fsl_assert.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/utilities/debug_console/fsl_debug_console.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/utilities/str/fsl_str.c
-        $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/snt/fsl_snt.c
+        $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/elemu/fsl_elemu.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/spc/fsl_spc.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/cmc/fsl_cmc.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/ccm32k/fsl_ccm32k.c
@@ -277,7 +277,7 @@ set(K32W1_SDK_INCLUDES
     $ENV{NXP_K32W1_SDK_ROOT}/CMSIS/Core/Include
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/port/sssapi
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/inc
-    $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/inc/snt
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/inc/elemu
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/port/kw45_k4w1
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/Common
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/FunctionLib
@@ -301,7 +301,7 @@ set(K32W1_SDK_INCLUDES
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/multicore/rpmsg_lite/lib/include/platform/k32w1
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/multicore/rpmsg_lite/lib/include/environment/bm
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/multicore/mcmgr/src
-    $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/snt
+    $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/elemu
     $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/spc
     $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/lpspi
     $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/ccm32k
