@@ -136,6 +136,16 @@ void otSysInit(int argc, char *argv[])
         BOARD_InitHardware();
 #endif
 
+        /* APP_InitServices needs to be called before PLATFORM_InitOT because of function
+         *  PLATFORM_FwkSrvRegisterLowPowerCallbacks which needs to register callbacks before NBU is started.
+         *  [APP_InitServices=>APP_ServiceInitLowpower=>PWR_Init=>PLATFORM_LowPowerInit=>PLATFORM_FwkSrvRegisterLowPowerCallbacks]
+         *  When low power is enabled on the host core, the radio core may need to set/release low power constraints
+         *  as some resources needed by it are in the host power domain.
+         *  This callback registration needs to be done before starting the radio core to avoid any race condition. */
+        /* Usually called from main function but in case it is compiled for OT repo applications
+         *  then we call it here in case any hardware like buttons or leds are needed */
+        APP_InitServices();
+
         /* Init Ot Platform */
         PLATFORM_InitOT();
 
@@ -149,10 +159,6 @@ void otSysInit(int argc, char *argv[])
 
         /* Hook used to call OT repo application functions*/
         APP_SysInitHook();
-
-        /* Usually called from main function but in case it is compiled for OT repo applications
-         * then we call it here in case any hardware like buttons or leds are needed */
-        APP_InitServices();
 
 #if defined(gAppLowpowerEnabled_d) && (gAppLowpowerEnabled_d > 0)
         PLATFORM_InitExternalFlash();
