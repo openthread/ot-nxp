@@ -303,7 +303,8 @@
 #define CONFIG_PLATFORM_CSL_ACCURACY 100
 #endif
 
-/* Should cover Rx tune time (warm-up) + us timer inaccuracy (it uses ticks ~= 30.5us) */
+/* Should cover Rx tune time (warm-up) + us timer inaccuracy (it uses ticks ~= 30.5us) +
+   NBU wake up time */
 /**
  * @def OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD
  *
@@ -311,7 +312,39 @@
  *
  */
 #ifndef OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD
-#define OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD 1920
+#define OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD (1920 + 768)
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AHEAD
+ *
+ * The minimum time (in microseconds) before the MHR start that the radio should be in receive state and ready to
+ * properly receive in order to properly receive any IEEE 802.15.4 frame. Defaults to the duration of SHR + PHR.
+ *
+ * Set to zero since on k32w1 will wake up much earlier (CSL_RECEIVE_TIME_AHEAD)
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AHEAD
+#define OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AHEAD 0
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AFTER
+ *
+ * The minimum time (in microseconds) after the MHR start that the radio should be in receive state in order
+ * to properly receive any IEEE 802.15.4 frame. Defaults to the duration of a maximum size frame, plus AIFS,
+ * plus the duration of maximum enh-ack frame. Platforms are encouraged to improve this value for energy
+ * efficiency purposes.
+ *
+ * The minimum CSL receive window (in microseconds) required to receive an IEEE 802.15.4 frame.
+ * - Maximum frame size with preamble: 6*2+127*2 symbols
+ * - AIFS: 12 symbols
+ * - Maximum ACK size with preamble: 6*2+39*2 symbols
+ * (destination PAN ID, extended destination/source address, CSL IE)
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AFTER
+#define OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AFTER 368 * 16
 #endif
 
 /* Should cover Tx tune time (warm-up) + encryption time +
