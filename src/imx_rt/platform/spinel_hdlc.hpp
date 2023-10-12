@@ -36,6 +36,7 @@
 #include "lib/hdlc/hdlc.hpp"
 #include "lib/spinel/multi_frame_buffer.hpp"
 #include "lib/spinel/spinel_interface.hpp"
+#include "lib/url/url.hpp"
 
 namespace ot {
 
@@ -47,20 +48,16 @@ typedef uint8_t HdlcSpinelContext;
  * This class defines an HDLC spinel interface to the Radio Co-processor (RCP).
  *
  */
-class HdlcInterface
+class HdlcInterface : public ot::Spinel::SpinelInterface
 {
 public:
     /**
      * This constructor initializes the object.
      *
-     * @param[in] aCallback         Callback on frame received
-     * @param[in] aCallbackContext  Callback context
-     * @param[in] aFrameBuffer      A reference to a `RxFrameBuffer` object.
+     * @param[in] aRadioUrl  RadioUrl parsed from radio url.
      *
      */
-    HdlcInterface(ot::Spinel::SpinelInterface::ReceiveFrameCallback aCallback,
-                  void                                             *aCallbackContext,
-                  ot::Spinel::SpinelInterface::RxFrameBuffer       &aFrameBuffer);
+    HdlcInterface(const Url::Url &aRadioUrl);
 
     /**
      * This destructor deinitializes the object.
@@ -71,8 +68,12 @@ public:
     /**
      * This method initializes the HDLC interface.
      *
+     * @param[in] aCallback         Callback on frame received
+     * @param[in] aCallbackContext  Callback context
+     * @param[in] aFrameBuffer      A reference to a `RxFrameBuffer` object.
+     *
      */
-    void Init(void);
+    otError Init(ReceiveFrameCallback aCallback, void *aCallbackContext, RxFrameBuffer &aFrameBuffer);
 
     /**
      * This method deinitializes the HDLC interface.
@@ -108,19 +109,32 @@ public:
     otError WaitForFrame(uint64_t aTimeoutUs);
 
     /**
+     * Updates the file descriptor sets with file descriptors used by the radio driver.
+     *
+     * @param[in,out]   aMainloopContext  A pointer to the mainloop context containing fd_sets.
+     *
+     */
+    void UpdateFdSet(void *aMainloopContext) { OT_UNUSED_VARIABLE(aMainloopContext); }
+
+    /**
+     * Returns the bus speed between the host and the radio.
+     *
+     * @returns   Bus speed in bits/second.
+     *
+     */
+    uint32_t GetBusSpeed(void) const
+    {
+        static constexpr uint32_t kDefaultSpeed = 1000000;
+        return kDefaultSpeed;
+    }
+
+    /**
      * This method performs radio driver processing.
      *
      * @param[in]  aInstance  The ot instance
      *
      */
     void Process(const void *aContext);
-
-    /**
-     * This method is called when RCP is reset to recreate the connection with it.
-     * Intentionally empty.
-     *
-     */
-    otError ResetConnection(void) { return OT_ERROR_NONE; }
 
     /**
      * This method hardware resets the RCP.
@@ -130,6 +144,14 @@ public:
      *
      */
     otError HardwareReset(void) { return OT_ERROR_NOT_IMPLEMENTED; }
+
+    /**
+     * Returns the RCP interface metrics.
+     *
+     * @returns The RCP interface metrics.
+     *
+     */
+    const otRcpInterfaceMetrics *GetRcpInterfaceMetrics(void) const { return nullptr; }
 
 private:
     enum
@@ -144,7 +166,7 @@ private:
 
     ot::Spinel::SpinelInterface::ReceiveFrameCallback mReceiveFrameCallback;
     void                                             *mReceiveFrameContext;
-    ot::Spinel::SpinelInterface::RxFrameBuffer       &mReceiveFrameBuffer;
+    ot::Spinel::SpinelInterface::RxFrameBuffer       *mReceiveFrameBuffer;
 
     ot::Spinel::FrameBuffer<ot::Spinel::SpinelInterface::kMaxFrameSize> encoderBuffer;
     ot::Hdlc::Encoder                                                   mHdlcEncoder;

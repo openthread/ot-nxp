@@ -34,12 +34,16 @@
 
 #include "ot_platform_common.h"
 
+#include <openthread/logging.h>
 #include <openthread/platform/radio.h>
 
 #include "spinel_hdlc.hpp"
+#include <lib/platform/exit_code.h>
 #include <lib/spinel/radio_spinel.hpp>
 
-static ot::Spinel::RadioSpinel<ot::RT::HdlcInterface> sRadioSpinel;
+static ot::Url::Url            sUrl;
+static ot::RT::HdlcInterface   sSpinelInterface(sUrl);
+static ot::Spinel::RadioSpinel sRadioSpinel;
 
 void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64)
 {
@@ -361,8 +365,7 @@ otRadioState otPlatRadioGetState(otInstance *aInstance)
 
 void otPlatRadioInit(void)
 {
-    sRadioSpinel.GetSpinelInterface().Init();
-    sRadioSpinel.Init(true, false);
+    sRadioSpinel.Init(sSpinelInterface, true, false);
 }
 
 void otPlatRadioDeinit(void)
