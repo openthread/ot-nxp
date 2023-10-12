@@ -89,25 +89,33 @@ namespace ot {
 
 namespace RT {
 
-HdlcInterface::HdlcInterface(ot::Spinel::SpinelInterface::ReceiveFrameCallback aCallback,
-                             void                                             *aCallbackContext,
-                             ot::Spinel::SpinelInterface::RxFrameBuffer       &aFrameBuffer)
-    : mReceiveFrameCallback(aCallback)
-    , mReceiveFrameContext(aCallbackContext)
-    , mReceiveFrameBuffer(aFrameBuffer)
+HdlcInterface::HdlcInterface(const Url::Url &aRadioUrl)
+    : mReceiveFrameCallback(nullptr)
+    , mReceiveFrameContext(nullptr)
+    , mReceiveFrameBuffer(nullptr)
     , encoderBuffer()
     , mHdlcEncoder(encoderBuffer)
-    , mHdlcDecoder(aFrameBuffer, HandleHdlcFrame, this)
+    , mHdlcDecoder()
 {
+    OT_UNUSED_VARIABLE(aRadioUrl);
 }
 
 HdlcInterface::~HdlcInterface(void)
 {
 }
 
-void HdlcInterface::Init(void)
+otError HdlcInterface::Init(ot::Spinel::SpinelInterface::ReceiveFrameCallback aCallback,
+                            void                                             *aCallbackContext,
+                            ot::Spinel::SpinelInterface::RxFrameBuffer       &aFrameBuffer)
 {
+    mReceiveFrameCallback = aCallback;
+    mReceiveFrameContext  = aCallbackContext;
+    mReceiveFrameBuffer   = &aFrameBuffer;
+    mHdlcDecoder.Init(aFrameBuffer, HandleHdlcFrame, this);
+
     InitUart();
+
+    return OT_ERROR_NONE;
 }
 
 void HdlcInterface::Deinit(void)
@@ -237,7 +245,7 @@ void HdlcInterface::HandleHdlcFrame(otError aError)
     else
     {
         OT_PLAT_DBG_NO_FUNC("Frame will be discarded error = 0x%x", aError);
-        mReceiveFrameBuffer.DiscardFrame();
+        mReceiveFrameBuffer->DiscardFrame();
     }
 }
 
