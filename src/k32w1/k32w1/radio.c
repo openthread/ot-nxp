@@ -533,6 +533,7 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
             {
                 otMacFrameSetFrameCounter(aFrame, sMacFrameCounter++);
 
+#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
                 if (aFrame->mInfo.mTxInfo.mCslPresent)
                 {
                     uint32_t hdrTimeUs;
@@ -546,6 +547,7 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
                                 (TX_ENCRYPT_DELAY_SYM + IEEE802154_PHY_SHR_LEN_SYM) * IEEE802154_SYMBOL_TIME_US;
                     otMacFrameSetCslIe(aFrame, sCslPeriod, rf_compute_csl_phase(hdrTimeUs));
                 }
+#endif
             }
         }
     }
