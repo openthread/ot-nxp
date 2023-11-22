@@ -121,9 +121,12 @@
  *
  * The size of heap buffer when DTLS is enabled.
  *
+ * From this pool, memory is allocated during TLS handshaking and commissioning.
+ * A smaller size will cause the process to fail with memory allocation error.
+ *
  */
 #ifndef OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE
-#define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE (2048 * sizeof(void *))
+#define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE (4096 * sizeof(void *))
 #endif
 
 /**
