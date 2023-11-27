@@ -44,12 +44,22 @@ typedef enum
 /* Header for a RAM buffer descriptor.
  * length: actual RAM buffer length (currently occupied with settingsBlock + data pairs).
  * maxLength: total allocated memory for RAM buffer (without header).
+ * extendedSearch: If false, the RAM buffer is limited to persistent storage
+ *                 backend region size.
+ *                 If true, the extended search feature is enabled. This means
+ *                 that a RAM buffer can span across multiple backend regions.
+ *                 Note: backend can be any persistent storage filesystem (e.g. PDM).
+ * backendRegionSize: If extendedSearch is false, it is used to limit the length of
+ *                    the buffer.
+ *                    If extendedSearch is true, it is ignored.
  * mutexHandle: mutex that protects RAM buffer operations.
  */
 typedef struct
 {
     uint16_t length;
     uint16_t maxLength;
+    bool_t   extendedSearch;
+    uint16_t backendRegionSize;
 #if PDM_SAVE_IDLE
     osaMutexId_t mutexHandle;
 #endif

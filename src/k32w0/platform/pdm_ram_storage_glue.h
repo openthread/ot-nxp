@@ -57,6 +57,9 @@ extern "C" {
 rsError ramStorageResize(ramBufferDescriptor *pBuffer, uint16_t aKey, const uint8_t *aValue, uint16_t aValueLength);
 #endif
 
+/* Wrapper over PDM_GetSegmentBufferSize. */
+bool_t PDM_RetrieveSegmentSize();
+
 /* Return a RAM buffer with initialSize and populated with the contents of NVM ID - if found in flash
  * Main use case is for dynamic memory allocation
  * In case static memory allocation is used, initialSize is unused
@@ -64,6 +67,8 @@ rsError ramStorageResize(ramBufferDescriptor *pBuffer, uint16_t aKey, const uint
 ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize, bool_t extendedSearch);
 
 #if PDM_SAVE_IDLE
+bool_t       FS_Init();
+void         FS_Deinit();
 PDM_teStatus FS_eSaveRecordDataInIdleTask(uint16_t u16IdValue, ramBufferDescriptor *pvDataBuffer);
 void         FS_vIdleTask(uint8_t u8WritesAllowed);
 bool_t       idleMutexIsTaken();
