@@ -135,28 +135,13 @@ MEMORY
   m_ram_interrupts      (RW)  : ORIGIN = m_interrupts_ram_start, LENGTH = m_ram_vector_table_size
   m_data1               (RW)  : ORIGIN = m_data1_start, LENGTH = m_data1_size
   rpmsg_sh_mem		      (RW)  : ORIGIN = rpmsg_sh_mem_start, LENGTH = rpmsg_sh_mem_size
-  m_nbu_flash           (RW)  : ORIGIN = 0x48800000, LENGTH = 0x00040000
   m_lowpower_flag       (RW)  : ORIGIN = m_lowpower_flag_start, LENGTH = m_lowpower_flag_size
 }
 
-TARGET(binary)
-/* Indicate NBU RAM binary to link */
-/*
- * in file k32w1.cmake
- * "NBU_BINARY_IMAGE_PATH" is defined for specifying path to connectivity_test.bin binary ... is set to SDK path at this moment:
- * $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/ieee-802.15.4/boards/k32w1/connectivity_test_cm3/bm/iar/Debug/Exe/
- */
-INPUT(k32w1_nbu_ble_15_4_dyn_1_9_10_0.sb3)
-OUTPUT_FORMAT(default)
 
 /* Define output sections */
 SECTIONS
 {
-  .nbu_flash :
-  {
-    k32w1_nbu_ble_15_4_dyn_1_9_10_0.sb3
-  } > m_nbu_flash
-
   /* NOINIT section for rpmsg_sh_mem */
   .noinit_rpmsg_sh_mem (NOLOAD) : ALIGN(4)
   {
