@@ -113,9 +113,9 @@ jobs:
         cd /tmp
         mkdir -p sdk_k32w1
         cd sdk_k32w1
-        wget https://cache.nxp.com/lgfiles/bsps/SDK_2_12_5_K32W148-EVK.zip
-        unzip SDK_2_12_5_K32W148-EVK.zip
-        rm -rf SDK_2_12_5_K32W148-EVK.zip
+        wget https://cache.nxp.com/lgfiles/bsps/SDK_2_12_6_K32W148-EVK.zip
+        unzip SDK_2_12_6_K32W148-EVK.zip
+        rm -rf SDK_2_12_6_K32W148-EVK.zip
 
     - name: Update JN5189 SDK
       run: |
