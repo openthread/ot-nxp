@@ -81,6 +81,7 @@ set(K32W1_SDK_SOURCES
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform_extflash.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/NVM/Source/NV_Flash.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/LowPower/PWR.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/RNG/RNG.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/SecLib/SecLib_sss.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/boards/kw45_k32w1/K32W1480/clock_config.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/boards/kw45_k32w1/hardware_init.c
