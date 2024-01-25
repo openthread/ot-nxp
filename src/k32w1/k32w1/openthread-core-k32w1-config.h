@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017, The OpenThread Authors.
+ *  Copyright (c) 2017-2023, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -121,9 +121,12 @@
  *
  * The size of heap buffer when DTLS is enabled.
  *
+ * From this pool, memory is allocated during TLS handshaking and commissioning.
+ * A smaller size will cause the process to fail with memory allocation error.
+ *
  */
 #ifndef OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE
-#define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE (2048 * sizeof(void *))
+#define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE (4096 * sizeof(void *))
 #endif
 
 /**
@@ -226,6 +229,14 @@
 #define OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE 4096
 #endif
 
+/*
+ * Always make sure that the hdlc encoder is bigger that the NCP spinel TX buffer
+ * In fact some issues could happen if the HDLC encoder buffer is smaller that the spinel TX buffer.
+ * So to avoid such issue we always make sure that the hdlc encoder is bigger that the NCP spinel TX buffer.
+ *
+ */
+#define OPENTHREAD_CONFIG_NCP_HDLC_TX_CHUNK_SIZE OPENTHREAD_CONFIG_NCP_TX_BUFFER_SIZE + 1024
+
 /**
  * @def OPENTHREAD_CONFIG_MLE_MAX_CHILDREN
  *
@@ -295,7 +306,8 @@
 #define CONFIG_PLATFORM_CSL_ACCURACY 100
 #endif
 
-/* Should cover Rx tune time (warm-up) + us timer inaccuracy (it uses ticks ~= 30.5us) */
+/* Should cover Rx tune time (warm-up) + us timer inaccuracy (it uses ticks ~= 30.5us) +
+   NBU wake up time */
 /**
  * @def OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD
  *
@@ -303,7 +315,39 @@
  *
  */
 #ifndef OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD
-#define OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD 1920
+#define OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD (1920 + 768)
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AHEAD
+ *
+ * The minimum time (in microseconds) before the MHR start that the radio should be in receive state and ready to
+ * properly receive in order to properly receive any IEEE 802.15.4 frame. Defaults to the duration of SHR + PHR.
+ *
+ * Set to zero since on k32w1 will wake up much earlier (CSL_RECEIVE_TIME_AHEAD)
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AHEAD
+#define OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AHEAD 0
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AFTER
+ *
+ * The minimum time (in microseconds) after the MHR start that the radio should be in receive state in order
+ * to properly receive any IEEE 802.15.4 frame. Defaults to the duration of a maximum size frame, plus AIFS,
+ * plus the duration of maximum enh-ack frame. Platforms are encouraged to improve this value for energy
+ * efficiency purposes.
+ *
+ * The minimum CSL receive window (in microseconds) required to receive an IEEE 802.15.4 frame.
+ * - Maximum frame size with preamble: 6*2+127*2 symbols
+ * - AIFS: 12 symbols
+ * - Maximum ACK size with preamble: 6*2+39*2 symbols
+ * (destination PAN ID, extended destination/source address, CSL IE)
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AFTER
+#define OPENTHREAD_CONFIG_MIN_RECEIVE_ON_AFTER 368 * 16
 #endif
 
 /* Should cover Tx tune time (warm-up) + encryption time +
@@ -329,6 +373,7 @@
 #endif
 
 /* Thread 1.3 configuration flags */
+#ifndef NO_THREAD_1_3_FLAGS
 /**
  * @def OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
  *
@@ -388,5 +433,5 @@
 #ifndef OPENTHREAD_CONFIG_ECDSA_ENABLE
 #define OPENTHREAD_CONFIG_ECDSA_ENABLE 1
 #endif
-
+#endif // NO_THREAD_1_3_FLAGS
 #endif // OPENTHREAD_CORE_K32W1_CONFIG_H_

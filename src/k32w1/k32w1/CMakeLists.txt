@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2021, The OpenThread Authors.
+#  Copyright (c) 2021-2023, The OpenThread Authors.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -100,15 +100,32 @@ set(K32W1_SOURCES
     radio.c
     system.c
     uart.c
-    power.c
-    ecdsa_sss.cpp
     ../../common/flash_nvm.c
     ../../../openthread/examples/apps/cli/cli_uart.cpp
 )
 
+if (NOT NO_THREAD_1_3_FLAGS)
+    list(APPEND K32W1_SOURCES
+        ecdsa_sss.cpp
+    )
+endif()
+
 set(K32W1_LIBS
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/SecLib/lib_crypto_m33.a
 )
+
+if (NOT OT_MAC_CSL_RECEIVER_ENABLE)
+    # disable CSL receiver for now
+    list(APPEND OT_PLATFORM_DEFINES
+        OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE=0
+    )
+endif()
+
+if (NO_THREAD_1_3_FLAGS)
+    list(APPEND OT_PLATFORM_DEFINES
+        "NO_THREAD_1_3_FLAGS"
+    )
+endif()
 
 set(K32W1_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/src

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017, The OpenThread Authors.
+ *  Copyright (c) 2023, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -28,76 +28,65 @@
 
 /**
  * @file
- *   This file includes the platform-specific initializers.
+ *   This file implements OT AES-ECB for K32W1 secure sub system
  *
  */
 
-#ifndef PLATFORM_K32W1_H_
-#define PLATFORM_K32W1_H_
+#include <string.h>
 
-#ifndef OT_EXTERNAL_BUILD
-#include <openthread-core-config.h>
-#include <openthread/config.h>
-#endif
+#include <crypto/aes_ecb.hpp>
+#include <openthread/error.h>
+#include <openthread/platform/crypto.h>
 
-#include <stdint.h>
+#include "common/code_utils.hpp"
+#include "common/debug.hpp"
+#include "common/error.hpp"
+#include "core/crypto/storage.hpp"
 
-#include <openthread/instance.h>
+extern "C" {
+#include "SecLib.h"
+}
 
-/**
- * This function initializes the alarm service used by OpenThread.
- *
- */
-void otPlatAlarmInit(void);
+using namespace ot;
+using namespace Crypto;
 
-/**
- * This function performs alarm driver processing.
- *
- * @param[in]  aInstance  The OpenThread instance structure.
- *
- */
-void otPlatAlarmProcess(otInstance *aInstance);
+// AES  Implementation
+otError otPlatCryptoAesInit(otCryptoContext *aContext)
+{
+    OT_UNUSED_VARIABLE(aContext);
 
-/**
- * This function performs uart driver processing.
- *
- */
-void otPlatUartProcess();
+    return kErrorNone;
+}
 
-/**
- * This function performs UART Blocking Send
- *
- * @param[in]  aBuf  Buffer to be sent over UART
- * @param[in]  len   Length of the above buffer
- *
- */
-void otPlatUartSendBlocking(const uint8_t *aBuf, uint32_t len);
+otError otPlatCryptoAesSetKey(otCryptoContext *aContext, const otCryptoKey *aKey)
+{
+    Error            error = kErrorNone;
+    const LiteralKey key(*static_cast<const Key *>(aKey));
 
-/**
- * This function initializes the radio service used by OpenThread.
- *
- */
-void otPlatRadioInit(void);
+    VerifyOrExit(aContext != nullptr, error = kErrorInvalidArgs);
+    VerifyOrExit(aContext->mContextSize >= key.GetLength(), error = kErrorFailed);
 
-/**
- * This function performs radio driver processing.
- *
- * @param[in]  aInstance  The OpenThread instance structure.
- *
- */
-void otPlatRadioProcess(otInstance *aInstance);
+    memcpy(aContext, key.GetBytes(), key.GetLength());
 
-#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
-/**
- * This function initializes the platform defined logging.
- *
- */
-void K32WLogInit();
-#endif /* OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED */
-#endif // PLATFORM_K32W1_H_
+exit:
+    return error;
+}
 
-/**
- * This function initializes the random number service used by OpenThread.
- *
- */
-void K32WRandomInit(void);
+otError otPlatCryptoAesEncrypt(otCryptoContext *aContext, const uint8_t *aInput, uint8_t *aOutput)
+{
+    Error error = kErrorNone;
+
+    VerifyOrExit(aContext != nullptr, error = kErrorInvalidArgs);
+
+    AES_128_Encrypt(aInput, (uint8_t *)aContext, aOutput);
+
+exit:
+    return error;
+}
+
+otError otPlatCryptoAesFree(otCryptoContext *aContext)
+{
+    OT_UNUSED_VARIABLE(aContext);
+
+    return kErrorNone;
+}

@@ -36,10 +36,35 @@
 #include "mbedtls/entropy_poll.h"
 #include "utils/code_utils.h"
 
+#if defined(USE_RTOS) && (USE_RTOS == 1)
+#include "fsl_os_abstraction.h"
+
+#define mutex_lock() OSA_MutexLock(trngMutexHandle, osaWaitForever_c)
+#define mutex_unlock() OSA_MutexUnlock(trngMutexHandle)
+
+OSA_MUTEX_HANDLE_DEFINE(trngMutexHandle);
+#else
+#define mutex_lock(...)
+#define mutex_unlock(...)
+#endif
+
+void K32WRandomInit(void)
+{
+#if defined(USE_RTOS) && (USE_RTOS == 1)
+    (void)OSA_MutexCreate(trngMutexHandle);
+    otEXPECT(NULL != trngMutexHandle);
+#endif
+
+exit:
+    return;
+}
+
 otError otPlatEntropyGet(uint8_t *aOutput, uint16_t aOutputLength)
 {
     otError error     = OT_ERROR_NONE;
     size_t  outputLen = 0;
+
+    mutex_lock();
 
     otEXPECT_ACTION(aOutput, error = OT_ERROR_INVALID_ARGS);
 
@@ -54,5 +79,6 @@ otError otPlatEntropyGet(uint8_t *aOutput, uint16_t aOutputLength)
     }
 
 exit:
+    mutex_unlock();
     return error;
 }

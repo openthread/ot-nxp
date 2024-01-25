@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2022, The OpenThread Authors.
+ *  Copyright (c) 2022-2023, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -54,9 +54,11 @@
 #include "utils/uart.h"
 
 #if defined(gAppLowpowerEnabled_d) && (gAppLowpowerEnabled_d > 0)
+#include "PWR_Interface.h"
 #include "fsl_pm_core.h"
 #include "fwk_platform_extflash.h"
 #include "fwk_platform_lowpower.h"
+
 static status_t            ExtFlash_LowpowerCb(pm_event_type_t eventType, uint8_t powerState, void *data);
 static pm_notify_element_t ExtFlashLpNotifyGroup = {
     .notifyCallback = ExtFlash_LowpowerCb,
@@ -66,10 +68,7 @@ static pm_notify_element_t ExtFlashLpNotifyGroup = {
 
 #if !defined(configUSE_TICKLESS_IDLE) || (defined(configUSE_TICKLESS_IDLE) && (configUSE_TICKLESS_IDLE == 0))
 #if defined(gAppLowpowerEnabled_d) && (gAppLowpowerEnabled_d > 0)
-#include "PWR_Interface.h"
 #include <openthread/tasklet.h>
-
-extern uint64_t PWR_TryEnterLowPower(uint64_t timeoutUs);
 
 #if (defined(gAppButtonCnt_c) && (gAppButtonCnt_c > 0))
 #include "fsl_component_button.h"
@@ -131,8 +130,21 @@ void otSysInit(int argc, char *argv[])
 
     if (!alreadyInit)
     {
+#if !defined(FSL_OSA_MAIN_FUNC_ENABLE) || (FSL_OSA_MAIN_FUNC_ENABLE == 0)
+        /* Called from OSA main() */
         /* Init clock config */
         BOARD_InitHardware();
+#endif
+
+        /* APP_InitServices needs to be called before PLATFORM_InitOT because of function
+         *  PLATFORM_FwkSrvRegisterLowPowerCallbacks which needs to register callbacks before NBU is started.
+         *  [APP_InitServices=>APP_ServiceInitLowpower=>PWR_Init=>PLATFORM_LowPowerInit=>PLATFORM_FwkSrvRegisterLowPowerCallbacks]
+         *  When low power is enabled on the host core, the radio core may need to set/release low power constraints
+         *  as some resources needed by it are in the host power domain.
+         *  This callback registration needs to be done before starting the radio core to avoid any race condition. */
+        /* Usually called from main function but in case it is compiled for OT repo applications
+         *  then we call it here in case any hardware like buttons or leds are needed */
+        APP_InitServices();
 
         /* Init Ot Platform */
         PLATFORM_InitOT();
@@ -147,10 +159,6 @@ void otSysInit(int argc, char *argv[])
 
         /* Hook used to call OT repo application functions*/
         APP_SysInitHook();
-
-        /* Usually called from main function but in case it is compiled for OT repo applications
-         * then we call it here in case any hardware like buttons or leds are needed */
-        APP_InitServices();
 
 #if defined(gAppLowpowerEnabled_d) && (gAppLowpowerEnabled_d > 0)
         PLATFORM_InitExternalFlash();
@@ -170,6 +178,10 @@ void otSysInit(int argc, char *argv[])
 #endif /*gAppButtonCnt_c > 0*/
 #endif /*gAppLowpowerEnabled_d*/
 #endif /*!defined(configUSE_TICKLESS_IDLE) || (defined(configUSE_TICKLESS_IDLE) && (configUSE_TICKLESS_IDLE==0))*/
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_PLATFORM_DEFINED)
+        K32WLogInit();
+#endif
+        K32WRandomInit();
     }
 
     otPlatRadioInit();
@@ -197,7 +209,11 @@ void otSysProcessDrivers(otInstance *aInstance)
     otPlatUartProcess();
 
 #if !USE_RTOS
+#if !defined(FSL_OSA_MAIN_FUNC_ENABLE) || (FSL_OSA_MAIN_FUNC_ENABLE == 0)
+    /* Called from OSA main() */
     OSA_ProcessTasks();
+#endif
+
     NvIdle();
 #endif
 
@@ -207,10 +223,27 @@ void otSysProcessDrivers(otInstance *aInstance)
     if (g_bBtnAllowDeviceToSleep)
 #endif /*(defined(gAppButtonCnt_c) && (gAppButtonCnt_c > 0))*/
     {
+        /*
+         * We need to protect PWR_EnterLowPower with interrupt disable/enable because PWR_EnterLowPower
+         * does not used interrupt disable/enable protection at all.
+         * Cover the case when at beginning PWR_EnterLowPower check the lpDisallowCount counter and it
+         * find it 0 which means can enter to low power, however if an interrupt which disallow entering
+         * into low power (like timerCallback for alarm milli handler) happens between lpDisallowCount check
+         * and WFI instruction, then IRQ will be serviced and device will end up into an inconsistent state,
+         * i.e. lpDisallowCount will be set to 1 from serviced IRQ but the device will manage to enter in low power,
+         * leading to fail to process the event in the main loop and possible stays in low power for ever
+         * if it was the single wake-up interrupt.
+         * Also otTaskletsArePending is included into interrupt protection to cover the case when between
+         * otTaskletsArePending check and WFI/PWR_EnterLowPower some Task.Post() is happening.
+         * If not using DisableGlobalIRQ here and Task.Post() from interrupt happens between
+         * otTaskletsArePending check and PWR_EnterLowPower entering, then task processing will be missed.
+         */
+        uint32_t intMask = DisableGlobalIRQ();
         if (otTaskletsArePending(aInstance) == false)
         {
-            PWR_TryEnterLowPower(0);
+            PWR_EnterLowPower(0);
         }
+        EnableGlobalIRQ(intMask);
     }
 #endif /*defined(gAppLowpowerEnabled_d) && (gAppLowpowerEnabled_d > 0)*/
 #endif /*!defined(configUSE_TICKLESS_IDLE) || (defined(configUSE_TICKLESS_IDLE) && (configUSE_TICKLESS_IDLE==0))*/

@@ -39,6 +39,8 @@
 #include <stdint.h>
 
 #include "PWR_Interface.h"
+#include "fsl_os_abstraction.h"
+#include "fwk_platform.h"
 #include "openthread-system.h"
 #include <common/logging.hpp>
 #include <openthread/platform/alarm-micro.h>
@@ -207,3 +209,32 @@ void otPlatAlarmMicroStop(otInstance *aInstance)
 }
 
 #endif /* OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE */
+
+uint64_t otPlatTimeGet(void)
+{
+    static uint64_t u64SwTimestampUs = 0;
+    static uint64_t u64HwTimestampUs = 0;
+
+    OSA_InterruptDisable();
+
+    /* Get new 32bit HW timestamp */
+    uint64_t u64HwTimestampUs_new = (uint64_t)TM_GetTimestamp();
+    uint64_t wrapped_val          = 0;
+    uint64_t increment;
+
+    /* Check if the timestamp has wrapped around */
+    if (u64HwTimestampUs > u64HwTimestampUs_new)
+    {
+        wrapped_val = COUNT_TO_USEC(((uint64_t)1 << 32), PLATFORM_TM_CLK_FREQ);
+    }
+
+    increment = (u64HwTimestampUs_new + wrapped_val) - u64HwTimestampUs;
+    u64SwTimestampUs += increment;
+
+    /* Store new HW timestamp for next iteration */
+    u64HwTimestampUs = u64HwTimestampUs_new;
+
+    OSA_InterruptEnable();
+
+    return u64SwTimestampUs;
+}

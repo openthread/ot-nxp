@@ -26,6 +26,9 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
+set(UART_BAUD_RATE "115200" CACHE STRING "Uart baud rate")
+set(UART_INSTANCE "1" CACHE STRING "Uart instance for RCP comms")
+
 list(APPEND OT_PLATFORM_DEFINES
     "USE_NBU=${USE_NBU}"
     "CPU_K32W1480VFTA"
@@ -33,7 +36,7 @@ list(APPEND OT_PLATFORM_DEFINES
     "SERIAL_USE_CONFIGURE_STRUCTURE=1"
     "SDK_COMPONENT_INTEGRATION=1"
     "SERIAL_PORT_TYPE_UART=1"
-    "gSerialManagerMaxInterfaces_c=1"
+    "gSerialManagerMaxInterfaces_c=2"
     "HAL_RPMSG_SELECT_ROLE=0"
     "TM_ENABLE_TIME_STAMP=1"
     "FSL_OSA_TASK_ENABLE=1"
@@ -42,13 +45,12 @@ list(APPEND OT_PLATFORM_DEFINES
     "gUnmirroredFeatureSet_d=1"
     "gNvFragmentation_Enabled_d=1"
     "gAppButtonCnt_c=2"
-    "gAppLowpowerEnabled_d=1"
     "gBleBondIdentityHeaderSize_c=56"
     "gPlatformShutdownEccRamInLowPower=0"
     "gMemManagerLightExtendHeapAreaUsage=1"
     "gAppHighSystemClockFrequency_d=1"
-    "SSS_CONFIG_FILE=\"fsl_sss_config_snt.h\""
-    "SSCP_CONFIG_FILE=\"fsl_sscp_config_snt.h\""
+    "SSS_CONFIG_FILE=\"fsl_sss_config_elemu.h\""
+    "SSCP_CONFIG_FILE=\"fsl_sscp_config_elemu.h\""
     "DBG_IO_ENABLE"
 )
 
@@ -58,16 +60,28 @@ else()
     set_property(SOURCE $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/gcc/startup_K32W1480.S PROPERTY LANGUAGE C)
 endif()
 
+if (OT_APP_LOWPOWER)
+    list(APPEND OT_PLATFORM_DEFINES
+        "gAppLowpowerEnabled_d=1"
+    )
+else()
+    list(APPEND OT_PLATFORM_DEFINES
+        "gAppLowpowerEnabled_d=0"
+    )
+endif()
+
 set(K32W1_SDK_SOURCES
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/FunctionLib/FunctionLib.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/HWParameter/HWParameter.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform_lowpower.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform_lowpower_timer.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform_ics.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform_ot.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/platform/kw45_k32w1/fwk_platform_extflash.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/NVM/Source/NV_Flash.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/LowPower/PWR.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/RNG/RNG.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/SecLib/SecLib_sss.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/boards/kw45_k32w1/K32W1480/clock_config.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/boards/kw45_k32w1/hardware_init.c
@@ -114,8 +128,16 @@ set(K32W1_SDK_SOURCES
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/src/sscp/fsl_sss_mgmt.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/src/sscp/fsl_sss_sscp.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/port/kw45_k4w1/sss_init.c
-    $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/ieee-802.15.4/utils/dbg_io.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/port/kw45_k4w1/sss_aes.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/port/kw45_k4w1/sss_ccm.c
+    ${PROJECT_SOURCE_DIR}/third_party/k32w1_sdk/board_lp.c
 )
+
+if (NOT SDK_RELEASE)
+    list(APPEND K32W1_SDK_SOURCES
+        $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/ieee-802.15.4/utils/dbg_io.c
+    )
+endif()
 
 if (USE_NBU)
     if (SDK_RELEASE)
@@ -167,12 +189,14 @@ if (SDK_RELEASE)
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_lpspi.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_ltc.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_lptmr.c
-        $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_snt.c
+        $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_elemu.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_spc.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_cmc.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_ccm32k.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_crc.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_wuu.c
+        $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_edma.c
+        $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/drivers/fsl_lpuart_edma.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/utilities/fsl_assert.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/utilities/debug_console/fsl_debug_console.c
         $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480/utilities/str/fsl_str.c
@@ -190,18 +214,44 @@ else()
         $ENV{NXP_K32W1_SDK_ROOT}/platform/utilities/assert/fsl_assert.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/utilities/debug_console/fsl_debug_console.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/utilities/str/fsl_str.c
-        $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/snt/fsl_snt.c
+        $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/elemu/fsl_elemu.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/spc/fsl_spc.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/cmc/fsl_cmc.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/ccm32k/fsl_ccm32k.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/crc/fsl_crc.c
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/wuu/fsl_wuu.c
+        $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/dma3/fsl_edma.c
+        $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/lpuart/fsl_lpuart_edma.c
 )
 endif()
 
 add_library(nxp-k32w1-driver
     ${K32W1_SDK_SOURCES}
 )
+
+if (OT_RCP_FLOW_CONTROL)
+    target_compile_definitions(nxp-k32w1-driver
+        PUBLIC
+             -DOT_APP_UART_BAUDRATE=${UART_BAUD_RATE}
+             -DSERIAL_MANAGER_RING_BUFFER_SIZE=320
+             -DOT_APP_SERIAL_PORT_USE_FC=1
+             -DOT_APP_UART_INSTANCE=${UART_INSTANCE}
+    )
+endif()
+
+if (OT_RCP_UART_DMA)
+    target_compile_definitions(nxp-k32w1-driver
+        PUBLIC
+             -DSERIAL_PORT_TYPE_UART_DMA=1
+             -DOT_APP_UART_BAUDRATE=${UART_BAUD_RATE}
+             -DSERIAL_MANAGER_RING_BUFFER_SIZE=320
+             -DOT_APP_UART_INSTANCE=${UART_INSTANCE}
+             -DHAL_UART_DMA_ENABLE=1
+             -DOT_APP_UART_TYPE=kSerialPort_UartDma
+             -DOT_APP_SERIAL_PORT_USE_DMA=1
+             -DLPUART_RING_BUFFER_SIZE=1024
+    )
+endif()
 
 target_compile_definitions(nxp-k32w1-driver
     PUBLIC
@@ -228,7 +278,7 @@ set(K32W1_SDK_INCLUDES
     $ENV{NXP_K32W1_SDK_ROOT}/CMSIS/Core/Include
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/port/sssapi
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/inc
-    $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/inc/snt
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/inc/elemu
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/port/kw45_k4w1
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/Common
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/framework/FunctionLib
@@ -250,8 +300,9 @@ set(K32W1_SDK_INCLUDES
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/ieee-802.15.4/ieee_802_15_4/phy/interface
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/multicore/rpmsg_lite/lib/include
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/multicore/rpmsg_lite/lib/include/platform/k32w1
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/multicore/rpmsg_lite/lib/include/environment/bm
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/multicore/mcmgr/src
-    $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/snt
+    $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/elemu
     $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/spc
     $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/lpspi
     $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/ccm32k
@@ -297,6 +348,7 @@ else()
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/lpspi
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/imu
         $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/wuu
+        $ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/dma3
         $ENV{NXP_K32W1_SDK_ROOT}/platform/utilities/misc_utilities
         $ENV{NXP_K32W1_SDK_ROOT}/platform/utilities/debug_console
         $ENV{NXP_K32W1_SDK_ROOT}/platform/utilities/str
