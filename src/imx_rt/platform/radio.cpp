@@ -365,7 +365,9 @@ otRadioState otPlatRadioGetState(otInstance *aInstance)
 
 void otPlatRadioInit(void)
 {
-    sRadioSpinel.Init(sSpinelInterface, true, false);
+    spinel_iid_t iidList[ot::Spinel::kSpinelHeaderMaxNumIid];
+    iidList[0] = 0;
+    sRadioSpinel.Init(sSpinelInterface, true, false, iidList, OT_ARRAY_LENGTH(iidList));
 }
 
 void otPlatRadioDeinit(void)
