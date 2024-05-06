@@ -40,10 +40,12 @@
 #include "spinel_hdlc.hpp"
 #include <lib/platform/exit_code.h>
 #include <lib/spinel/radio_spinel.hpp>
+#include <lib/spinel/spinel_driver.hpp>
 
-static ot::Url::Url            sUrl;
-static ot::RT::HdlcInterface   sSpinelInterface(sUrl);
-static ot::Spinel::RadioSpinel sRadioSpinel;
+static ot::Url::Url             sUrl;
+static ot::RT::HdlcInterface    sSpinelInterface(sUrl);
+static ot::Spinel::SpinelDriver sSpinelDriver;
+static ot::Spinel::RadioSpinel  sRadioSpinel;
 
 void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64)
 {
@@ -367,15 +369,20 @@ void otPlatRadioInit(void)
 {
     spinel_iid_t iidList[ot::Spinel::kSpinelHeaderMaxNumIid];
     iidList[0] = 0;
-    sRadioSpinel.Init(sSpinelInterface, true, false, iidList, OT_ARRAY_LENGTH(iidList));
+
+    OT_UNUSED_VARIABLE(
+        sSpinelDriver.Init(sSpinelInterface, true /* aSoftwareReset */, iidList, OT_ARRAY_LENGTH(iidList)));
+    sRadioSpinel.Init(false /* aSkipRcpCompatibilityCheck */, true /* aSoftwareReset */, &sSpinelDriver);
 }
 
 void otPlatRadioDeinit(void)
 {
     sRadioSpinel.Deinit();
+    sSpinelDriver.Deinit();
 }
 
 void otPlatRadioProcess(const otInstance *aInstance)
 {
+    sSpinelDriver.Process(aInstance);
     sRadioSpinel.Process(aInstance);
 }
