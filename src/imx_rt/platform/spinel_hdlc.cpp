@@ -31,6 +31,8 @@
 #include "fsl_component_serial_manager.h"
 #include "fsl_os_abstraction.h"
 
+#include "lib/utils/utils.hpp"
+
 #include <openthread/tasklet.h>
 #include <openthread/platform/alarm-milli.h>
 
@@ -128,11 +130,11 @@ otError HdlcInterface::SendFrame(const uint8_t *aFrame, uint16_t aLength)
     otError error = OT_ERROR_NONE;
     assert(encoderBuffer.IsEmpty());
 
-    SuccessOrExit(error = mHdlcEncoder.BeginFrame());
-    SuccessOrExit(error = mHdlcEncoder.Encode(aFrame, aLength));
-    SuccessOrExit(error = mHdlcEncoder.EndFrame());
+    EXPECT_NO_ERROR(error = mHdlcEncoder.BeginFrame());
+    EXPECT_NO_ERROR(error = mHdlcEncoder.Encode(aFrame, aLength));
+    EXPECT_NO_ERROR(error = mHdlcEncoder.EndFrame());
     OT_PLAT_DBG("frame len to send = %d/%d", encoderBuffer.GetLength(), aLength);
-    SuccessOrExit(error = Write(encoderBuffer.GetFrame(), encoderBuffer.GetLength()));
+    EXPECT_NO_ERROR(error = Write(encoderBuffer.GetFrame(), encoderBuffer.GetLength()));
 
 exit:
     if (error != OT_ERROR_NONE)
