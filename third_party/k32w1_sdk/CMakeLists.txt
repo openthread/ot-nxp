@@ -122,8 +122,6 @@ set(K32W1_SDK_SOURCES
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/XCVR/drv/nb2p4ghz/configs/gen45/nxp_xcvr_mode_config.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/XCVR/drv/nb2p4ghz/configs/gen45/nxp_xcvr_msk_config.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/wireless/XCVR/drv/nb2p4ghz/configs/gen45/nxp_xcvr_oqpsk_802p15p4_config.c
-    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/port/sssapi/entropy_poll_alt.c
-    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/port/sssapi/sssapi_mbedtls.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/src/sscp/fsl_sscp_mu.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/src/sscp/fsl_sss_mgmt.c
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/src/sscp/fsl_sss_sscp.c
@@ -225,6 +223,7 @@ else()
 )
 endif()
 
+
 add_library(nxp-k32w1-driver
     ${K32W1_SDK_SOURCES}
 )
@@ -271,12 +270,119 @@ target_compile_options(nxp-k32w1-driver
         -fno-strict-aliasing
 )
 
+add_library(nxp-k32w1-mbedtls
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/aes.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/aesni.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/arc4.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/aria.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/asn1parse.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/asn1write.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/base64.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/bignum.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/blowfish.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/camellia.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ccm.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/certs.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/cipher.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/cipher_wrap.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/chacha20.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/chachapoly.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/cmac.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/constant_time.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ctr_drbg.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/debug.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/des.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/dhm.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ecdh.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ecdsa.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ecjpake.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ecp.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ecp_curves.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/entropy.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/error.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/gcm.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/havege.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/hkdf.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/hmac_drbg.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/md.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/md2.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/md4.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/md5.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/memory_buffer_alloc.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/net_sockets.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/nist_kw.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/oid.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/padlock.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/pem.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/pk.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/pk_wrap.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/pkcs5.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/pkcs11.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/pkcs12.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/pkparse.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/pkwrite.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/platform.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/platform_util.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/poly1305.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/psa_crypto.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/psa_crypto_client.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/psa_crypto_driver_wrappers.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/psa_crypto_ecp.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/psa_crypto_rsa.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/psa_crypto_se.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/psa_crypto_slot_management.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/psa_crypto_storage.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/psa_its_file.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ripemd160.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/rsa.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/rsa_internal.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/sha1.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/sha256.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/sha512.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ssl_cache.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ssl_ciphersuites.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ssl_cli.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ssl_cookie.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ssl_msg.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ssl_srv.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ssl_ticket.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ssl_tls.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/ssl_tls13_keys.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/threading.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/timing.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/version.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/version_features.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/x509.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/x509_create.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/x509_crl.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/x509_crt.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/x509_csr.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/x509write_crt.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/x509write_csr.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library/xtea.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/port/sssapi/entropy_poll_alt.c
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/port/sssapi/sssapi_mbedtls.c
+)
+
+target_include_directories(nxp-k32w1-mbedtls
+    PRIVATE
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/library
+    PUBLIC
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/include
+    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/port/sssapi
+)
+
+target_compile_definitions(nxp-k32w1-mbedtls
+    PUBLIC
+    "MBEDTLS_USER_CONFIG_FILE=\"k32w1-mbedtls-config.h\""
+    "MBEDTLS_CONFIG_FILE=\"${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/mbedtls-config.h\""
+)
+
 set(K32W1_SDK_INCLUDES
     ${PROJECT_SOURCE_DIR}/openthread/examples/platforms
     ${PROJECT_SOURCE_DIR}/third_party/k32w1_sdk
     $ENV{NXP_K32W1_SDK_ROOT}/devices/K32W1480
     $ENV{NXP_K32W1_SDK_ROOT}/CMSIS/Core/Include
-    $ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/port/sssapi
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/inc
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/inc/elemu
     $ENV{NXP_K32W1_SDK_ROOT}/middleware/secure-subsystem/port/kw45_k4w1
@@ -361,3 +467,5 @@ target_include_directories(nxp-k32w1-driver
 )
 
 target_link_libraries(nxp-k32w1-driver PRIVATE ot-config)
+
+target_link_libraries(nxp-k32w1-mbedtls PRIVATE ot-config)

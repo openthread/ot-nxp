@@ -32,10 +32,6 @@ list(APPEND OT_PLATFORM_DEFINES
 
 set(OT_PLATFORM_DEFINES ${OT_PLATFORM_DEFINES} PARENT_SCOPE)
 
-target_compile_definitions(ot-config INTERFACE
-    "MBEDTLS_USER_CONFIG_FILE=\"k32w1-mbedtls-config.h\""
-)
-
 set(OT_PUBLIC_INCLUDES ${OT_PUBLIC_INCLUDES} PARENT_SCOPE)
 
 set(COMM_FLAGS
@@ -95,6 +91,7 @@ target_link_libraries(openthread-k32w1
         -Wl,-Map=$<TARGET_PROPERTY:NAME>.map,-print-memory-usage
     PRIVATE
         nxp-k32w1-driver
+        nxp-k32w1-mbedtls
         ot-config
 )
 else()
@@ -106,6 +103,7 @@ target_link_libraries(openthread-k32w1
         -Wl,-Map=$<TARGET_PROPERTY:NAME>.map,-print-memory-usage
     PRIVATE
         nxp-k32w1-driver
+        nxp-k32w1-mbedtls
         ot-config
 )
 endif()

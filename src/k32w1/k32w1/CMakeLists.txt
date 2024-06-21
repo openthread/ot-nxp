@@ -32,10 +32,8 @@ list(APPEND OT_PUBLIC_DEFINES
 )
 
 list(APPEND OT_PUBLIC_INCLUDES
-        "${PROJECT_SOURCE_DIR}/include/"
-        "${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/"
-        "${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/repo/"
-        "${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/repo/include/"
+        "$ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/"
+        "$ENV{NXP_K32W1_SDK_ROOT}/middleware/mbedtls/include/"
         "$ENV{NXP_K32W1_SDK_ROOT}"
         "$ENV{NXP_K32W1_SDK_ROOT}/CMSIS/Include"
         "$ENV{NXP_K32W1_SDK_ROOT}/platform/drivers/common"
