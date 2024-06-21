@@ -45,6 +45,7 @@ OT_OPTIONS=(
     "-DOT_NXP_EXPORT_TO_SREC=ON"
     "-DOT_PLATFORM=external"
     "-DOT_SLAAC=ON"
+    "-DOT_EXTERNAL_MBEDTLS=nxp-k32w1-mbedtls"
 )
 readonly OT_OPTIONS
 
@@ -92,7 +93,7 @@ build()
     fi
 
     # shellcheck disable=SC2068
-    cmake -GNinja -DUSE_NBU=1 -DOT_BUILD_K32W1=ON -DOT_COMPILE_WARNING_AS_ERROR=ON -DOT_MBEDTLS_CONFIG_FILE=\"mbedtls-config.h\" ${cmakeArgs[@]} "${OT_SRCDIR}"
+    cmake -GNinja -DUSE_NBU=1 -DOT_BUILD_K32W1=ON -DOT_COMPILE_WARNING_AS_ERROR=ON ${cmakeArgs[@]} "${OT_SRCDIR}"
 
     if [[ -n ${OT_CMAKE_NINJA_TARGET[*]} ]]; then
         ninja "${OT_CMAKE_NINJA_TARGET[@]}"
