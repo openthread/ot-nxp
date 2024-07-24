@@ -367,12 +367,23 @@ otRadioState otPlatRadioGetState(otInstance *aInstance)
 
 void otPlatRadioInit(void)
 {
+#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2 && OPENTHREAD_CONFIG_MAC_CSL_TRANSMITTER_ENABLE
+    bool enableRcpTimeSync = true;
+#else
+    bool enableRcpTimeSync = false;
+#endif
+    const otRadioCaps kRequiredRadioCaps =
+#if OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2
+        OT_RADIO_CAPS_TRANSMIT_SEC | OT_RADIO_CAPS_TRANSMIT_TIMING |
+#endif
+        OT_RADIO_CAPS_ACK_TIMEOUT | OT_RADIO_CAPS_TRANSMIT_RETRIES | OT_RADIO_CAPS_CSMA_BACKOFF;
     spinel_iid_t iidList[ot::Spinel::kSpinelHeaderMaxNumIid];
     iidList[0] = 0;
 
     OT_UNUSED_VARIABLE(
         sSpinelDriver.Init(sSpinelInterface, true /* aSoftwareReset */, iidList, OT_ARRAY_LENGTH(iidList)));
-    sRadioSpinel.Init(false /* aSkipRcpCompatibilityCheck */, true /* aSoftwareReset */, &sSpinelDriver);
+    sRadioSpinel.Init(false /* aSkipRcpCompatibilityCheck */, true /* aSoftwareReset */, &sSpinelDriver,
+                      enableRcpTimeSync, kRequiredRadioCaps);
 }
 
 void otPlatRadioDeinit(void)
