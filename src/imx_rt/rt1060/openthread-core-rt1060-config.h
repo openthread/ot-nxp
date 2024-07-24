@@ -236,15 +236,6 @@ LOG_MODULE_DEFINE(ot_stack_log, kLOG_LevelDebug)
 #define OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE 1
 
 /**
- * @def OPENTHREAD_CONFIG_PLATFORM_RADIO_SPINEL_RX_FRAME_BUFFER_SIZE
- *
- * Specifies the rx frame buffer size used by `SpinelInterface` in RCP host (posix) code. This is applicable/used when
- * `RadioSpinel` platform is used.
- *
- */
-#define OPENTHREAD_LIB_SPINEL_RX_FRAME_BUFFER_SIZE 512
-
-/**
  * @def OPENTHREAD_CONFIG_PING_SENDER_ENABLE
  *
  * Enable Ping sender functionnality
