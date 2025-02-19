@@ -209,9 +209,9 @@ main()
     fi
 
     if [ $# == 0 ]; then
-        create_directory_and_build all $SDK_RELEASE "$@"
+        create_directory_and_build all "$SDK_RELEASE" "$@"
     else
-        create_directory_and_build "$1" $SDK_RELEASE "$@"
+        create_directory_and_build "$1" "$SDK_RELEASE" "$@"
     fi
 
 }
