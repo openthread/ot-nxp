@@ -256,7 +256,7 @@ void HdlcInterface::InitUart(void)
     serial_manager_status_t status;
 #if (defined(HAL_UART_DMA_ENABLE) && (HAL_UART_DMA_ENABLE > 0U))
 #if (defined(FSL_FEATURE_SOC_DMAMUX_COUNT) && (FSL_FEATURE_SOC_DMAMUX_COUNT > 0U))
-    dma_mux_configure_t dma_mux;
+    dma_mux_configure_t dma_mux                   = {};
     dma_mux.dma_dmamux_configure.dma_mux_instance = 0;
     dma_mux.dma_dmamux_configure.rx_request       = kDmaRequestMuxLPUART8Rx;
     dma_mux.dma_dmamux_configure.tx_request       = kDmaRequestMuxLPUART8Tx;
@@ -264,10 +264,9 @@ void HdlcInterface::InitUart(void)
 #endif
 #if (defined(HAL_UART_DMA_ENABLE) && (HAL_UART_DMA_ENABLE > 0U))
 #if (defined(FSL_FEATURE_EDMA_HAS_CHANNEL_MUX) && (FSL_FEATURE_EDMA_HAS_CHANNEL_MUX > 0U))
-    dma_channel_mux_configure_t dma_channel_mux;
-    dma_channel_mux.dma_dmamux_configure.dma_mux_instance   = 0;
-    dma_channel_mux.dma_dmamux_configure.dma_tx_channel_mux = kDmaRequestMuxLPUART8Rx;
-    dma_channel_mux.dma_dmamux_configure.dma_rx_channel_mux = kDmaRequestMuxLPUART8Tx;
+    dma_channel_mux_configure_t dma_channel_mux             = {};
+    dma_channel_mux.dma_dmamux_configure.dma_tx_channel_mux = kDmaRequestMuxLPUART8Tx;
+    dma_channel_mux.dma_dmamux_configure.dma_rx_channel_mux = kDmaRequestMuxLPUART8Rx;
 #endif
 #endif
 #if (defined(HAL_UART_DMA_ENABLE) && (HAL_UART_DMA_ENABLE > 0U))

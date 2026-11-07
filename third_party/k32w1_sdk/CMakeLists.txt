@@ -374,6 +374,7 @@ target_include_directories(nxp-k32w1-mbedtls
 
 target_compile_definitions(nxp-k32w1-mbedtls
     PUBLIC
+    "MBEDTLS_VERSION_NUMBER=0x021C0000"
     "MBEDTLS_USER_CONFIG_FILE=\"k32w1-mbedtls-config.h\""
     "MBEDTLS_CONFIG_FILE=\"${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/mbedtls-config.h\""
 )
