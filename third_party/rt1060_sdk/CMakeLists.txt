@@ -320,10 +320,13 @@ target_include_directories(nxp-rt1060-mbedtls
     $ENV{NXP_RT1060_SDK_ROOT}/middleware/mbedtls/port/ksdk
 )
 
-target_compile_definitions(nxp-rt1060-mbedtls 
+target_compile_definitions(nxp-rt1060-mbedtls
     PUBLIC
+    "MBEDTLS_VERSION_NUMBER=0x021A0000"
     "MBEDTLS_USER_CONFIG_FILE=\"rt1060-mbedtls-config.h\""
-    "MBEDTLS_CONFIG_FILE=\"${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/mbedtls-config.h\"" 
+    "MBEDTLS_CONFIG_FILE=\"${PROJECT_SOURCE_DIR}/openthread/third_party/mbedtls/mbedtls-config.h\""
+    "SSS_HAVE_ALT_SSS=0"
+    "SSS_HAVE_ALT_A71CH=0"
 )
 
 target_compile_options(nxp-rt1060-mbedtls

@@ -55,6 +55,7 @@
 #include "utils/link_metrics.h"
 #include "utils/mac_frame.h"
 
+#include <openthread/instance.h>
 #include <openthread/platform/alarm-milli.h>
 #include <openthread/platform/diag.h>
 #include <openthread/platform/radio.h>
@@ -1193,12 +1194,12 @@ void otPlatRadioProcess(otInstance *aInstance)
     if (sRxDone)
     {
         extendedRadioFrame *pRxFrmProcessing = NULL;
-#if OPENTHREAD_CONFIG_DIAG_ENABLE
+#if OPENTHREAD_CONFIG_DIAG_ENABLE && (OPENTHREAD_API_VERSION < 518)
         if (otPlatDiagModeGet())
         {
             while ((pRxFrmProcessing = PopRxRingBuffer(&sRxRing)) != NULL)
             {
-                otPlatDiagRadioReceiveDone(aInstance, pRxFrmProcessing->RxFrame, OT_ERROR_NONE);
+                otPlatDiagRadioReceiveDone(aInstance, &pRxFrmProcessing->RxFrame, OT_ERROR_NONE);
                 MSG_Free(pRxFrmProcessing->pPhyBuffer); // free PHY Allocated buffer
                 pRxFrmProcessing->pPhyBuffer = NULL;
             }

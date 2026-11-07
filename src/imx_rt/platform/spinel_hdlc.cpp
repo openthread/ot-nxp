@@ -255,52 +255,44 @@ void HdlcInterface::InitUart(void)
 {
     serial_manager_status_t status;
 #if (defined(HAL_UART_DMA_ENABLE) && (HAL_UART_DMA_ENABLE > 0U))
+    using UartConfigType      = serial_port_uart_dma_config_t;
+    void *dmaMuxConfig        = nullptr;
+    void *dmaChannelMuxConfig = nullptr;
 #if (defined(FSL_FEATURE_SOC_DMAMUX_COUNT) && (FSL_FEATURE_SOC_DMAMUX_COUNT > 0U))
-    dma_mux_configure_t dma_mux;
+    dma_mux_configure_t dma_mux                   = {};
     dma_mux.dma_dmamux_configure.dma_mux_instance = 0;
     dma_mux.dma_dmamux_configure.rx_request       = kDmaRequestMuxLPUART8Rx;
     dma_mux.dma_dmamux_configure.tx_request       = kDmaRequestMuxLPUART8Tx;
-#endif
-#endif
-#if (defined(HAL_UART_DMA_ENABLE) && (HAL_UART_DMA_ENABLE > 0U))
-#if (defined(FSL_FEATURE_EDMA_HAS_CHANNEL_MUX) && (FSL_FEATURE_EDMA_HAS_CHANNEL_MUX > 0U))
-    dma_channel_mux_configure_t dma_channel_mux;
-    dma_channel_mux.dma_dmamux_configure.dma_mux_instance   = 0;
-    dma_channel_mux.dma_dmamux_configure.dma_tx_channel_mux = kDmaRequestMuxLPUART8Rx;
-    dma_channel_mux.dma_dmamux_configure.dma_rx_channel_mux = kDmaRequestMuxLPUART8Tx;
-#endif
-#endif
-#if (defined(HAL_UART_DMA_ENABLE) && (HAL_UART_DMA_ENABLE > 0U))
-    serial_port_uart_dma_config_t uartConfig =
-#else
-    serial_port_uart_config_t uartConfig =
-#endif
-    {.clockRate       = SPINEL_UART_CLOCK_RATE,
-     .baudRate        = SPINEL_UART_BAUD_RATE,
-     .parityMode      = kSerialManager_UartParityDisabled,
-     .stopBitCount    = kSerialManager_UartOneStopBit,
-     .enableRx        = 1,
-     .enableTx        = 1,
-     .enableRxRTS     = SPINEL_ENABLE_RX_RTS,
-     .enableTxCTS     = SPINEL_ENABLE_TX_RTS,
-     .instance        = SPINEL_UART_INSTANCE,
-     .mode            = kSerialManager_UartNonBlockMode,
-     .txFifoWatermark = 0,
-     .rxFifoWatermark = 0,
-#if (defined(HAL_UART_DMA_ENABLE) && (HAL_UART_DMA_ENABLE > 0U))
-     .dma_instance = 0,
-     .rx_channel   = LPUART_RX_DMA_CHANNEL,
-     .tx_channel   = LPUART_TX_DMA_CHANNEL,
-#if (defined(FSL_FEATURE_SOC_DMAMUX_COUNT) && (FSL_FEATURE_SOC_DMAMUX_COUNT > 0U))
-     .dma_mux_configure = &dma_mux,
-#else
-     .dma_mux_configure         = NULL,
+    dmaMuxConfig                                  = &dma_mux;
 #endif
 #if (defined(FSL_FEATURE_EDMA_HAS_CHANNEL_MUX) && (FSL_FEATURE_EDMA_HAS_CHANNEL_MUX > 0U))
-     .dma_channel_mux_configure = &dma_channel_mux,
-#else
-     .dma_channel_mux_configure = NULL,
+    dma_channel_mux_configure_t dma_channel_mux             = {};
+    dma_channel_mux.dma_dmamux_configure.dma_tx_channel_mux = kDmaRequestMuxLPUART8Tx;
+    dma_channel_mux.dma_dmamux_configure.dma_rx_channel_mux = kDmaRequestMuxLPUART8Rx;
+    dmaChannelMuxConfig                                     = &dma_channel_mux;
 #endif
+#else
+    using UartConfigType = serial_port_uart_config_t;
+#endif
+    UartConfigType uartConfig = {
+        .clockRate       = SPINEL_UART_CLOCK_RATE,
+        .baudRate        = SPINEL_UART_BAUD_RATE,
+        .parityMode      = kSerialManager_UartParityDisabled,
+        .stopBitCount    = kSerialManager_UartOneStopBit,
+        .enableRx        = 1,
+        .enableTx        = 1,
+        .enableRxRTS     = SPINEL_ENABLE_RX_RTS,
+        .enableTxCTS     = SPINEL_ENABLE_TX_RTS,
+        .instance        = SPINEL_UART_INSTANCE,
+        .mode            = kSerialManager_UartNonBlockMode,
+        .txFifoWatermark = 0,
+        .rxFifoWatermark = 0,
+#if (defined(HAL_UART_DMA_ENABLE) && (HAL_UART_DMA_ENABLE > 0U))
+        .dma_instance              = 0,
+        .rx_channel                = LPUART_RX_DMA_CHANNEL,
+        .tx_channel                = LPUART_TX_DMA_CHANNEL,
+        .dma_mux_configure         = dmaMuxConfig,
+        .dma_channel_mux_configure = dmaChannelMuxConfig,
 #endif
     };
 

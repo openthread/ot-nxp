@@ -94,7 +94,7 @@ extern void BOARD_GetCoexIoCfg(void **rfDeny, void **rfActive, void **rfStatus);
 #define K32W_RADIO_DEFAULT_CHANNEL (11)
 
 #define US_PER_SYMBOL (16) /* Duration of a single symbol in [us] */
-#define SYMBOLS_TO_US(symbols) ((symbols)*US_PER_SYMBOL)
+#define SYMBOLS_TO_US(symbols) (US_PER_SYMBOL * (symbols))
 #define US_TO_MILI_DIVIDER (1000)
 
 /* max number of SED children <= the size of address mask variable(s) */

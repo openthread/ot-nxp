@@ -152,8 +152,13 @@ static rsError initPdmEncContext(PDM_portConfig_t *pdm_PortContext,
         }
         else
         {
+#if ENABLE_STORAGE_DYNAMIC_MEMORY
             err = stagingBufferResize(pdm_PortContext, stagingBufferSize);
             otEXPECT(err == RS_ERROR_NONE);
+#else
+            err = RS_ERROR_PDM_ENC;
+            otEXPECT(false);
+#endif
         }
     }
     else if (config_flags == (PDM_CNF_ENC_ENABLED | PDM_CNF_ENC_TMP_BUFF))
@@ -232,16 +237,32 @@ bool_t PDM_RetrieveSegmentSize()
     return TRUE;
 }
 
-#if ENABLE_STORAGE_DYNAMIC_MEMORY
-
+#if ENABLE_STORAGE_DYNAMIC_MEMORY || PDM_SAVE_IDLE || PDM_ENCRYPTION
 static void HandleError(ramBufferDescriptor **buffer)
 {
     if (*buffer != NULL)
     {
+#if PDM_SAVE_IDLE
+        if ((*buffer)->header.mutexHandle != NULL)
+        {
+            (void)OSA_MutexDestroy((*buffer)->header.mutexHandle);
+            (*buffer)->header.mutexHandle = NULL;
+        }
+#endif
+#if ENABLE_STORAGE_DYNAMIC_MEMORY
+        if ((*buffer)->buffer != NULL)
+        {
+            otPlatFree((*buffer)->buffer);
+            (*buffer)->buffer = NULL;
+        }
         otPlatFree(*buffer);
+#endif
         *buffer = NULL;
     }
 }
+#endif
+
+#if ENABLE_STORAGE_DYNAMIC_MEMORY
 
 /* Iterate through all PDM ids (if any), starting from the base
  * PDM id passed as input and compute the maximum length a RAM
@@ -280,7 +301,9 @@ static uint16_t doesDataExist(uint16_t id, ramBufferDescriptor *handle)
  */
 ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize, bool_t extendedSearch)
 {
-    rsError              err      = RS_ERROR_NONE;
+#if PDM_ENCRYPTION
+    rsError err = RS_ERROR_NONE;
+#endif
     ramBufferDescriptor *ramDescr = NULL;
     uint16_t             nbPdmIds = 0;
 
@@ -371,27 +394,29 @@ ramBufferDescriptor *getRamBuffer(uint16_t nvmId, uint16_t initialSize, bool_t e
 {
     OT_UNUSED_VARIABLE(initialSize);
 
-    rsError              err       = RS_ERROR_NONE;
-    ramBufferDescriptor *ramDescr  = (ramBufferDescriptor *)&sPdmBuffer;
-    uint16_t             bytesRead = 0;
+    ramBufferDescriptor *ramDescr = NULL;
 
-    otEXPECT_ACTION((TRUE == PDM_RetrieveSegmentSize()), ramDescr = NULL);
+    otEXPECT(TRUE == PDM_RetrieveSegmentSize());
 
+    memset(sPdmBuffer, 0, kRamDescSize);
+    ramDescr                           = (ramBufferDescriptor *)&sPdmBuffer;
     ramDescr->header.extendedSearch    = extendedSearch;
     ramDescr->header.backendRegionSize = PDM_SEGMENT_SIZE;
     ramDescr->header.maxLength         = PDM_BUFFER_SIZE - kRamDescSize;
     ramDescr->buffer                   = (uint8_t *)&sPdmBuffer[kRamDescSize];
 #if PDM_SAVE_IDLE
-    ramDescr->header.mutexHandle       = OSA_MutexCreate();
-    otEXPECT_ACTION((NULL != ramDescr->header.mutexHandle), ramDescr = NULL);
+    /* Create mutex for idle save */
+    ramDescr->header.mutexHandle = OSA_MutexCreate();
+    otEXPECT_ACTION((NULL != ramDescr->header.mutexHandle), HandleError(&ramDescr));
 #endif
 
 #if PDM_ENCRYPTION
     /* Use static staging buffer for encryption result.
      * Don't pass any encryption key, use the EFUSE key.
      */
-    err = initPdmEncContext(&pdm_PortContext, sPdmStagingBuffer, PDM_BUFFER_SIZE, NULL, PDM_CNF_ENC_ENABLED);
-    otEXPECT(err == RS_ERROR_NONE);
+    otEXPECT_ACTION(initPdmEncContext(&pdm_PortContext, sPdmStagingBuffer, PDM_BUFFER_SIZE, NULL,
+                                      PDM_CNF_ENC_ENABLED) == RS_ERROR_NONE,
+                    HandleError(&ramDescr));
 #endif
 
     if (PDM_bDoesDataExist(nvmId, &ramDescr->header.length))

@@ -122,10 +122,11 @@ void K32WAlarmInit(void)
     Timestamp_Init();
 
     /* Get clk frequency and use prescale to lower it */
-    refClk                = CLOCK_GetFreq(CLOCK_32k_source);
-    otTimer.u8Status      = TMR_E_ACTIVITY_FREE;
+    refClk           = CLOCK_GetFreq(CLOCK_32k_source);
+    otTimer.u8Status = TMR_E_ACTIVITY_FREE;
 
 #if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
+    /* Initialize microsecond timer status */
     otMicroTimer.u8Status = TMR_E_ACTIVITY_FREE;
 #endif
 #endif
