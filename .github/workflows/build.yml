@@ -36,21 +36,26 @@ on:
     branches:
       - 'main'
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || (github.repository == 'openthread/ot-nxp' && github.run_id) || github.ref }}
   cancel-in-progress: true
 
 jobs:
   pretty:
+    name: pretty
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
-        submodules: true
+        submodules: recursive
+        persist-credentials: false
     - name: Bootstrap
       run: |
         sudo apt-get update
-        sudo apt-get --no-install-recommends install -y clang-format-14 shellcheck
+        sudo apt-get --no-install-recommends install -y clang-format-14 clang-format-19 shellcheck
         python3 -m pip install yapf==0.29.0
         sudo snap install shfmt
     - name: Check
@@ -76,16 +81,19 @@ jobs:
             gcc_download_url: https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2019q4/RC2.1/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
             gcc_extract_dir: gcc-arm-none-eabi-9-2019-q4-major
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
-        submodules: true
+        submodules: recursive
+        persist-credentials: false
 
     - name: Bootstrap
+      env:
+        GCC_DOWNLOAD_URL: ${{ matrix.gcc_download_url }}
       run: |
         cd /tmp
         sudo apt-get update
         sudo apt-get --no-install-recommends install -y build-essential lib32z1 ninja-build python3-setuptools python3-colorama
-        wget --tries 4 --no-check-certificate --quiet ${{ matrix.gcc_download_url }} -O gcc-arm
+        wget --tries 4 --no-check-certificate --quiet "${GCC_DOWNLOAD_URL}" -O gcc-arm
         tar xjf gcc-arm
         sudo pip3 install pycryptodome
         sudo pip3 install west
@@ -135,8 +143,10 @@ jobs:
         cp -r mcux-sdk/devices/MIMXRT1062/gcc sdk_rt1060/sdks/devices/MIMXRT1062/
 
     - name: Build
+      env:
+        GCC_EXTRACT_DIR: ${{ matrix.gcc_extract_dir }}
       run: |
-        export PATH=/tmp/${{ matrix.gcc_extract_dir }}/bin:$PATH
+        export PATH="/tmp/${GCC_EXTRACT_DIR}/bin:$PATH"
         export NXP_JN5189_SDK_ROOT=/tmp/sdk_jn5189/sdks/
         export NXP_RT1060_SDK_ROOT=/tmp/sdk_rt1060/sdks/
         export NXP_K32W1_SDK_ROOT=/tmp/sdk_k32w1/
