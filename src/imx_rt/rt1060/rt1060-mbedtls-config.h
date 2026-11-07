@@ -147,7 +147,7 @@
  * RSA-2048 still requires the FREESCALE_PKHA_LONG_OPERANDS_ENABLE macro to be defined,
  * otherwise it fails at runtime.
  */
-//#define FREESCALE_PKHA_LONG_OPERANDS_ENABLE
+// #define FREESCALE_PKHA_LONG_OPERANDS_ENABLE
 #endif
 
 /* Enable AES use in library if there is AES on chip. */
@@ -168,10 +168,10 @@
  * it doesn't support context switch.
  * HW acceleration of SHA is disabled by default in MbedTLS integration.
  */
-//#define SHA_INSTANCE SHA0            /* SHA base register.*/
-//#define MBEDTLS_FREESCALE_LPC_SHA1   /* Enable use of LPC SHA.*/
-//#define MBEDTLS_FREESCALE_LPC_SHA256 /* Enable use of LPC SHA256.*/
-//#define MANUAL_LOAD_SHA_INPUT 1      /* 0 - use MEMADDR, MEMCRL (pseudo-DMA), 1 - manual load */
+// #define SHA_INSTANCE SHA0            /* SHA base register.*/
+// #define MBEDTLS_FREESCALE_LPC_SHA1   /* Enable use of LPC SHA.*/
+// #define MBEDTLS_FREESCALE_LPC_SHA256 /* Enable use of LPC SHA256.*/
+// #define MANUAL_LOAD_SHA_INPUT 1      /* 0 - use MEMADDR, MEMCRL (pseudo-DMA), 1 - manual load */
 #endif
 
 /* Enable CASPER use in library if there is CASPER on chip. */
@@ -233,9 +233,9 @@
 #if defined(MBEDTLS_FREESCALE_DCP_AES)
 #define MBEDTLS_AES_CRYPT_CBC_ALT
 #define MBEDTLS_AES_ALT_NO_256
-//#define MBEDTLS_AES192_ALT_SW
-//#define MBEDTLS_AES256_ALT_SW
-//#define MBEDTLS_AES_CBC_ALT_SW
+// #define MBEDTLS_AES192_ALT_SW
+// #define MBEDTLS_AES256_ALT_SW
+// #define MBEDTLS_AES_CBC_ALT_SW
 #endif
 #if defined(MBEDTLS_FREESCALE_LTC_AES) || defined(MBEDTLS_FREESCALE_MMCAU_AES) || \
     defined(MBEDTLS_FREESCALE_LPC_AES) || defined(MBEDTLS_FREESCALE_CAAM_AES) ||  \

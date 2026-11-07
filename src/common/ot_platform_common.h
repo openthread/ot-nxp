@@ -45,7 +45,7 @@
 extern "C" {
 #endif
 
-//#define OT_PLAT_DBG_LVL 4
+// #define OT_PLAT_DBG_LVL 4
 
 #define OT_PLAT_DBG_LEVEL_NONE 0
 #define OT_PLAT_DBG_LEVEL_ERR 1

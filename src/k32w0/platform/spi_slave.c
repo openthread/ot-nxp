@@ -354,7 +354,7 @@ otError otPlatSpiSlaveEnable(otPlatSpiSlaveTransactionCompleteCallback aComplete
 
     /* Clear the SPI_FIFOWR_EOT_MASK bit when data is not the last. */
     tmp &= (uint32_t)(~kSPI_FrameAssert);
-    *(((uint16_t *)((uint32_t) & (SPI1->FIFOWR))) + 1) = (uint16_t)(tmp >> 16U);
+    *(((volatile uint16_t *)&SPI1->FIFOWR) + 1) = (uint16_t)(tmp >> 16U);
 
     DMA_StartTransfer(&slaveRxHandle);
 
