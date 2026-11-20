@@ -90,42 +90,167 @@ jobs:
         west update
         chmod +x core/tools/imagetool/sign_images.sh
 
-    - name: Update K32W1 SDK
+    - name: Cache K32W1 SDK
+      id: cache-k32w1-sdk
       if: ${{ matrix.gcc_ver >= 6 }}
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: /tmp/sdk_k32w1
+        key: ${{ runner.os }}-nxp-sdk-k32w1-v1-f29ee95c3a99d4b1d8e0ad9347b1201b9f6d688ff39af07b691628f63d86fc93
+
+    - name: Update K32W1 SDK
+      if: ${{ matrix.gcc_ver >= 6 && steps.cache-k32w1-sdk.outputs.cache-hit != 'true' }}
+      env:
+        SDK_URL: https://cache.nxp.com/lgfiles/bsps/SDK_2_12_6_K32W148-EVK.zip
+        SDK_SHA256: f29ee95c3a99d4b1d8e0ad9347b1201b9f6d688ff39af07b691628f63d86fc93
+        SDK_DEST: /tmp/sdk_k32w1
       run: |
-        cd /tmp
-        mkdir -p sdk_k32w1
-        cd sdk_k32w1
-        wget https://cache.nxp.com/lgfiles/bsps/SDK_2_12_6_K32W148-EVK.zip
-        unzip SDK_2_12_6_K32W148-EVK.zip
-        rm -rf SDK_2_12_6_K32W148-EVK.zip
+        (
+          set -euo pipefail
+          umask 022
+          stage_dir="$(mktemp -d /tmp/.sdk_k32w1.XXXXXX)"
+          trap 'rm -rf "${stage_dir}"' EXIT
+          archive="${stage_dir}/sdk.zip"
+          if ! command -v curl >/dev/null 2>&1 || ! curl --proto '=https' --tlsv1.2 -fsSL \
+            --retry 3 --retry-delay 2 --retry-max-time 300 \
+            --connect-timeout 15 --max-time 300 \
+            --speed-limit 10240 --speed-time 30 \
+            -o "${archive}" "${SDK_URL}"; then
+            echo "WARNING: curl failed for ${SDK_URL}; falling back to wget" >&2
+            rm -f "${archive}"
+            [[ "${SDK_URL}" == https://* ]]
+            wget -nv --https-only --secure-protocol=TLSv1_2 \
+              --tries=4 --timeout=15 --waitretry=2 \
+              --retry-connrefused --retry-on-http-error=429,500,502,503,504 \
+              -O "${archive}" "${SDK_URL}"
+          fi
+          echo "${SDK_SHA256}  ${archive}" | sha256sum -c -
+          mkdir -p "${stage_dir}/extracted"
+          unzip -q "${archive}" -d "${stage_dir}/extracted"
+          chmod 0755 "${stage_dir}/extracted"
+          test -f "${stage_dir}/extracted/SW-Content-Register.txt"
+          rm -rf "${SDK_DEST:?}"
+          mv "${stage_dir}/extracted" "${SDK_DEST}"
+        )
+
+    - name: Cache JN5189 SDK
+      id: cache-jn5189-sdk
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: /tmp/sdk_jn5189
+        key: ${{ runner.os }}-nxp-sdk-jn5189-v1-f7abce9dec111f936cbf5d87fa9446a479e7a47505067d11a25aa097ca058714
 
     - name: Update JN5189 SDK
+      if: ${{ steps.cache-jn5189-sdk.outputs.cache-hit != 'true' }}
+      env:
+        SDK_URL: https://mcuxpresso.nxp.com/eclipse/sdk/2.6.4/plugins/com.nxp.mcuxpresso.sdk.sdk_2.x_jn5189dk6_2.6.4.201911251446.jar
+        SDK_SHA256: f7abce9dec111f936cbf5d87fa9446a479e7a47505067d11a25aa097ca058714
+        SDK_INNER_ZIP: sdks/02acef84909cb653e56c7d331710a9d8.zip
+        SDK_DEST: /tmp/sdk_jn5189
       run: |
-        cd /tmp
-        mkdir -p sdk_jn5189
-        cd sdk_jn5189
-        wget https://mcuxpresso.nxp.com/eclipse/sdk/2.6.4/plugins/com.nxp.mcuxpresso.sdk.sdk_2.x_jn5189dk6_2.6.4.201911251446.jar
-        unzip com.nxp.mcuxpresso.sdk.sdk_2.x_jn5189dk6_2.6.4.201911251446.jar
-        rm -rf com.nxp.mcuxpresso.sdk.sdk_2.x_jn5189dk6_2.6.4.201911251446.jar
-        cd sdks
-        unzip 02acef84909cb653e56c7d331710a9d8.zip
-        rm -rf 02acef84909cb653e56c7d331710a9d8.zip
+        (
+          set -euo pipefail
+          umask 022
+          stage_dir="$(mktemp -d /tmp/.sdk_jn5189.XXXXXX)"
+          trap 'rm -rf "${stage_dir}"' EXIT
+          archive="${stage_dir}/sdk.jar"
+          if ! command -v curl >/dev/null 2>&1 || ! curl --proto '=https' --tlsv1.2 -fsSL \
+            --retry 3 --retry-delay 2 --retry-max-time 300 \
+            --connect-timeout 15 --max-time 300 \
+            --speed-limit 10240 --speed-time 30 \
+            -o "${archive}" "${SDK_URL}"; then
+            echo "WARNING: curl failed for ${SDK_URL}; falling back to wget" >&2
+            rm -f "${archive}"
+            [[ "${SDK_URL}" == https://* ]]
+            wget -nv --https-only --secure-protocol=TLSv1_2 \
+              --tries=4 --timeout=15 --waitretry=2 \
+              --retry-connrefused --retry-on-http-error=429,500,502,503,504 \
+              -O "${archive}" "${SDK_URL}"
+          fi
+          echo "${SDK_SHA256}  ${archive}" | sha256sum -c -
+          mkdir -p "${stage_dir}/extracted"
+          unzip -q "${archive}" -d "${stage_dir}/extracted"
+          unzip -q "${stage_dir}/extracted/${SDK_INNER_ZIP}" -d "${stage_dir}/extracted/sdks"
+          rm -f "${stage_dir}/extracted/${SDK_INNER_ZIP}"
+          chmod 0755 "${stage_dir}/extracted"
+          test -f "${stage_dir}/extracted/sdks/SW-Content-Register.txt"
+          chmod +x "${stage_dir}/extracted/sdks/tools/imagetool/sign_images.sh"
+          rm -rf "${SDK_DEST:?}"
+          mv "${stage_dir}/extracted" "${SDK_DEST}"
+        )
+
+    - name: Cache RT1060 SDK
+      id: cache-rt1060-sdk
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: /tmp/sdk_rt1060
+        key: ${{ runner.os }}-nxp-sdk-rt1060-v1-ee1bade449790084c67b9d2797ebd416f64c9ea04b8777c62c38649f63b0ab9d-8a289764d763ad06e0c3a05c885644ed98b970af
 
     - name: Update RT1060 SDK
+      if: ${{ steps.cache-rt1060-sdk.outputs.cache-hit != 'true' }}
+      env:
+        SDK_URL: https://mcuxpresso.nxp.com/eclipse/sdk/2.10.1/plugins/com.nxp.mcuxpresso.sdk.sdk_2.x_evk-mimxrt1060_2.10.1.201911251446.jar
+        SDK_SHA256: ee1bade449790084c67b9d2797ebd416f64c9ea04b8777c62c38649f63b0ab9d
+        SDK_INNER_ZIP: sdks/1e658d5d02bf56581ebcb1bc782b7d67.zip
+        SDK_DEST: /tmp/sdk_rt1060
+        MCUX_SDK_URL: https://github.com/nxp-mcuxpresso/legacy-mcux-sdk.git
+        MCUX_SDK_COMMIT: 8a289764d763ad06e0c3a05c885644ed98b970af # main
       run: |
-        cd /tmp
-        mkdir -p sdk_rt1060
-        cd sdk_rt1060
-        wget https://mcuxpresso.nxp.com/eclipse/sdk/2.10.1/plugins/com.nxp.mcuxpresso.sdk.sdk_2.x_evk-mimxrt1060_2.10.1.201911251446.jar
-        unzip com.nxp.mcuxpresso.sdk.sdk_2.x_evk-mimxrt1060_2.10.1.201911251446.jar
-        rm -rf com.nxp.mcuxpresso.sdk.sdk_2.x_evk-mimxrt1060_2.10.1.201911251446.jar
-        cd sdks
-        unzip 1e658d5d02bf56581ebcb1bc782b7d67.zip
-        rm -rf 1e658d5d02bf56581ebcb1bc782b7d67.zip
-        cd /tmp
-        git clone https://github.com/NXPmicro/mcux-sdk.git
-        cp -r mcux-sdk/devices/MIMXRT1062/gcc sdk_rt1060/sdks/devices/MIMXRT1062/
+        (
+          set -euo pipefail
+          umask 022
+          stage_dir="$(mktemp -d /tmp/.sdk_rt1060.XXXXXX)"
+          trap 'rm -rf "${stage_dir}"' EXIT
+          archive="${stage_dir}/sdk.jar"
+          if ! command -v curl >/dev/null 2>&1 || ! curl --proto '=https' --tlsv1.2 -fsSL \
+            --retry 3 --retry-delay 2 --retry-max-time 300 \
+            --connect-timeout 15 --max-time 300 \
+            --speed-limit 10240 --speed-time 30 \
+            -o "${archive}" "${SDK_URL}"; then
+            echo "WARNING: curl failed for ${SDK_URL}; falling back to wget" >&2
+            rm -f "${archive}"
+            [[ "${SDK_URL}" == https://* ]]
+            wget -nv --https-only --secure-protocol=TLSv1_2 \
+              --tries=4 --timeout=15 --waitretry=2 \
+              --retry-connrefused --retry-on-http-error=429,500,502,503,504 \
+              -O "${archive}" "${SDK_URL}"
+          fi
+          echo "${SDK_SHA256}  ${archive}" | sha256sum -c -
+          mkdir -p "${stage_dir}/extracted"
+          unzip -q "${archive}" -d "${stage_dir}/extracted"
+          unzip -q "${stage_dir}/extracted/${SDK_INNER_ZIP}" -d "${stage_dir}/extracted/sdks"
+          rm -f "${stage_dir}/extracted/${SDK_INNER_ZIP}"
+          mcux_dir="${stage_dir}/mcux-sdk"
+          fetch_ok=0
+          for attempt in 1 2 3; do
+            rm -rf "${mcux_dir}"
+            mkdir -p "${mcux_dir}"
+            if git -C "${mcux_dir}" init -q \
+              && git -C "${mcux_dir}" remote add origin "${MCUX_SDK_URL}" \
+              && git -C "${mcux_dir}" config http.lowSpeedLimit 10240 \
+              && git -C "${mcux_dir}" config http.lowSpeedTime 30 \
+              && git -C "${mcux_dir}" sparse-checkout set devices/MIMXRT1062/gcc \
+              && git -C "${mcux_dir}" fetch --depth 1 --filter=blob:none origin "${MCUX_SDK_COMMIT}" \
+              && git -C "${mcux_dir}" checkout -q "${MCUX_SDK_COMMIT}"; then
+              fetch_ok=1
+              break
+            fi
+            echo "WARNING: failed to fetch mcux-sdk on attempt ${attempt}" >&2
+            if [[ "${attempt}" -lt 3 ]]; then
+              sleep 2
+            fi
+          done
+          if [[ "${fetch_ok}" -ne 1 ]]; then
+            echo "ERROR: failed to fetch ${MCUX_SDK_URL} at ${MCUX_SDK_COMMIT}" >&2
+            exit 1
+          fi
+          cp -r "${mcux_dir}/devices/MIMXRT1062/gcc" "${stage_dir}/extracted/sdks/devices/MIMXRT1062/"
+          chmod 0755 "${stage_dir}/extracted"
+          test -f "${stage_dir}/extracted/sdks/SW-Content-Register.txt"
+          test -f "${stage_dir}/extracted/sdks/devices/MIMXRT1062/gcc/startup_MIMXRT1062.S"
+          rm -rf "${SDK_DEST:?}"
+          mv "${stage_dir}/extracted" "${SDK_DEST}"
+        )
 
     - name: Build
       env:
